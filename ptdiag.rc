@@ -1,0 +1,319 @@
+//Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE resource.
+//
+#ifndef APSTUDIO_INVOKED
+#include "targetver.h"
+#endif
+#define APSTUDIO_HIDDEN_SYMBOLS
+#include "windows.h"
+#undef APSTUDIO_HIDDEN_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE 9, 1
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+
+IDI_PTDIAG              ICON         "icon1.ico"
+IDI_SMALL               ICON         "icon2.ico"
+IDI_GREEN               ICON         "icon3.ico"
+IDI_RED                 ICON         "icon4.ico"
+IDI_BLUE                ICON         "icon5.ico"
+IDI_YELLOW              ICON         "icon6.ico"
+IDI_GREY                ICON         "icon7.ico"
+/////////////////////////////////////////////////////////////////////////////
+//
+// Menu
+//
+
+IDC_PTDIAG MENU
+BEGIN
+    POPUP "File"
+    BEGIN
+        MENUITEM "View Log File",               IDM_FILE_VIEW_LOG
+        MENUITEM SEPARATOR
+        MENUITEM "Exit",                        IDM_FILE_EXIT
+    END
+
+    POPUP "View"
+    BEGIN
+        MENUITEM "Init File Options",           IDM_VIEW_INIT
+        MENUITEM "Predifined CAN Ids"  ,        IDM_VIEW_CAN_IDS
+        MENUITEM "Return Code Definitions",     IDM_VIEW_CODE_DEFS
+        MENUITEM SEPARATOR
+        MENUITEM "General Log",                 IDM_VIEW_GEN_LOG
+        MENUITEM "Special Stats",               IDM_VIEW_SPECIAL_STATS
+        MENUITEM "PC Configuration",            IDM_VIEW_PC_CONFIG
+    END
+
+    POPUP "Setup"
+    BEGIN
+        MENUITEM "General Configuration",       IDM_SETUP_CONFIG
+        MENUITEM SEPARATOR
+        MENUITEM "Special Configuration",       IDM_SETUP_SPECIAL_CONFIG
+        MENUITEM "IP Configuration",            IDM_SETUP_IP_CONFIG
+    END
+
+    POPUP "Diagnostic"
+    BEGIN
+        MENUITEM "Data Acquisition",            IDM_DIAG_DATA_ACQ
+        MENUITEM "Get DTCs",                    IDM_DIAG_GET_DTC
+        MENUITEM "OBDII Functions",             IDM_DIAG_OBD_FUNCS
+        MENUITEM "PATS Functions",              IDM_DIAG_PATS
+        MENUITEM "Output Test Mode",            IDM_DIAG_OUTPUT_TEST
+        MENUITEM "Miscellaneous Commands",      IDM_DIAG_MISC_COMM
+    END
+
+    POPUP "Programming"
+    BEGIN
+            MENUITEM "PCM Programming",         IDM_PROG_PCM
+            MENUITEM "Generic Programming",     IDM_PROG_GENERIC
+            MENUITEM SEPARATOR
+            MENUITEM "Block Read and Write",    IDM_PROG_BLOCK_READ_WRITE
+    END
+
+    POPUP "Tools"
+    BEGIN
+        MENUITEM "Brake System Tools",          IDM_TOOLS_BRAKE
+        MENUITEM "Read Memory Block",           IDM_TOOLS_READ_MEMORY_BLOCK
+        MENUITEM "Read Memory Segment",         IDM_TOOLS_READ_MEMORY_SEGMENT
+        MENUITEM "Read Translated Table",       IDM_TOOLS_READ_TRANSLATED_TABLE
+        MENUITEM "RAM Download (poke)",         IDM_TOOLS_RAM_DOWNLOAD
+        MENUITEM "KAM Save and Restore",        IDM_TOOLS_KAM_SAVE_RESTORE
+        MENUITEM "Data Logging Tools",          IDM_TOOLS_LOGGING_TOOLS
+        MENUITEM "Diesel System Tools",         IDM_TOOLS_DIESEL_TOOLS
+        MENUITEM SEPARATOR
+        MENUITEM "Fuel Multiplier",             IDM_TOOLS_FUEL_MULT
+        MENUITEM "Fault Injection",             IDM_TOOLS_FAULT_INJECTION
+        MENUITEM SEPARATOR
+        MENUITEM "Monitor CAN Data",            IDM_TOOLS_MONITOR_CAN
+    END
+
+    POPUP "Utility"
+    BEGIN
+        MENUITEM "Vehicle Link Simulator",      IDM_UTILITY_VEHICLE_LINK_SIM
+        MENUITEM "Transmit Periodic Message",   IDM_UTILITY_TRANSMIT_PERIODIC_MSG
+        MENUITEM "Test Panel",                  IDM_UTILITY_TEST_PANEL
+        MENUITEM SEPARATOR
+        MENUITEM "View Hex File Data",          IDM_UTILITY_VIEW_HEX
+        MENUITEM "View VBF File Data",          IDM_UTILITY_VIEW_VBF
+        MENUITEM "View Binary File Data",       IDM_UTILITY_VIEW_BIN
+        MENUITEM SEPARATOR
+        MENUITEM "Special Tests",               IDM_UTILITY_SPECIAL_TESTS
+        MENUITEM "Run Stress Tests",            IDM_UTILITY_STRESS_TESTS
+    END
+
+    POPUP "Help"
+    BEGIN
+        MENUITEM "Usage Notes",                 IDM_HELP_USAGE
+        MENUITEM "Release Notes",               IDM_HELP_REL_NOTES
+        MENUITEM "About PT Diag",               IDM_HELP_ABOUT
+    END
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Accelerator
+//
+
+IDC_PTDIAG ACCELERATORS
+BEGIN
+    "?",            IDM_HELP_ABOUT,              ASCII,  ALT
+    "/",            IDM_HELP_ABOUT,              ASCII,  ALT
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+//// APPLICATION DIALOGS
+
+//// Main Dialog
+IDD_PTDIAG DIALOG 0, 0, 497, 275
+STYLE DS_SETFONT | WS_CHILD
+CAPTION ""
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+FONT 8, "MS Sans Serif"
+BEGIN
+    CONTROL "", 1005, "STATIC", WS_CHILD | WS_VISIBLE | WS_GROUP | 0xC, 110, 29, 62, 10
+    CONTROL "General Configuration", 1016, BUTTON, BS_GROUPBOX | WS_CHILD | WS_VISIBLE, 15, 14, 257, 97
+    CONTROL "Connect", 1009, BUTTON, BS_PUSHBUTTON | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 299, 33, 44, 16
+    CONTROL "Ping Module", 1010, BUTTON, BS_PUSHBUTTON | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 354, 33, 49, 17
+    CONTROL "Quick Test", 1017, BUTTON, BS_GROUPBOX | WS_CHILD | WS_VISIBLE, 287, 16, 181, 96
+    CONTROL "Attention", 1019, BUTTON, BS_GROUPBOX | WS_CHILD | WS_VISIBLE, 16, 121, 452, 53
+    CONTROL "Status", 1025, BUTTON, BS_GROUPBOX | WS_CHILD | WS_VISIBLE, 17, 182, 448, 37
+    CONTROL "", 1006, "STATIC", WS_CHILD | WS_VISIBLE | WS_GROUP | 0xC, 24, 134, 430, 34
+    CONTROL "", 1007, "STATIC", WS_CHILD | WS_VISIBLE | WS_GROUP | 0x20C, 25, 193, 428, 18
+    CONTROL "", 1012, "STATIC", WS_CHILD | WS_VISIBLE | WS_GROUP | 0xC, 25, 28, 76, 11
+    CONTROL "", 1013, "STATIC", WS_CHILD | WS_VISIBLE | WS_GROUP | 0xC, 26, 46, 235, 10
+    CONTROL "", 1014, "STATIC", WS_CHILD | WS_VISIBLE | WS_GROUP | 0xC, 23, 62, 245, 11
+    CONTROL "", 1026, "STATIC", WS_CHILD | WS_VISIBLE | WS_GROUP | 0xC, 24, 81, 239, 9
+END
+
+IDD_PTDIAG_TEXT_POPUP_1 DIALOG 0, 0, 308, 166
+STYLE DS_SYSMODAL | DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION
+CAPTION ""
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+FONT 8, "MS Sans Serif"
+BEGIN
+    CONTROL "", 1063, "STATIC", WS_CHILD | WS_VISIBLE | WS_GROUP | 0xC, 17, 18, 264, 118
+END
+
+IDD_PTDIAG_TEXT_POPUP_2 DIALOG 0, 0, 314, 165
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION
+CAPTION ""
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+FONT 8, "MS Sans Serif"
+BEGIN
+    CONTROL "", 1005, "STATIC", WS_CHILD | WS_VISIBLE | WS_GROUP | 0xC, 17, 20, 273, 101
+END
+
+IDD_PTDIAG_TEXT_POPUP_3 DIALOG 0, 0, 300, 146
+STYLE DS_SYSMODAL | DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION
+CAPTION ""
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+FONT 8, "MS Sans Serif"
+BEGIN
+    CONTROL "", 1005, "STATIC", WS_CHILD | WS_VISIBLE | WS_GROUP | 0xC, 24, 21, 239, 68
+END
+
+IDD_PTDIAG_GENERAL_LOG DIALOG 0, 0, 364, 174
+STYLE DS_SETFONT | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "General Log"
+MENU 117
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+FONT 8, "MS Sans Serif"
+BEGIN
+    CONTROL "", 1001, LISTBOX, LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | LBS_EXTENDEDSEL | WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL | WS_HSCROLL | WS_TABSTOP, 31, 38, 284, 79
+    CONTROL "Hide Window", 1, BUTTON, BS_PUSHBUTTON | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 31, 132, 64, 18
+    CONTROL "Write Log", 1009, BUTTON, BS_PUSHBUTTON | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 111, 133, 89, 18
+    CONTROL "", 1005, "STATIC", WS_CHILD | WS_VISIBLE | WS_GROUP | 0x120C, 33, 15, 89, 13
+    CONTROL "", 1006, "STATIC", WS_CHILD | WS_VISIBLE | WS_GROUP | 0x120C, 131, 14, 89, 13
+    CONTROL "", 1007, "STATIC", WS_CHILD | WS_VISIBLE | WS_GROUP | 0x120C, 228, 14, 89, 13
+END
+
+IDD_PTDIAG_USAGE_NOTES DIALOG 0, 0, 350, 236
+STYLE DS_SETFONT | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "PTDIAG Usage Notes"
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+FONT 8, "MS Sans Serif"
+BEGIN
+    CONTROL "Hide Window", 1, BUTTON, BS_DEFPUSHBUTTON | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 102, 191, 58, 14
+    CONTROL "", 1033, "STATIC", WS_CHILD | WS_VISIBLE | WS_GROUP | 0xC, 19, 21, 77, 16
+    CONTROL "", 1069, LISTBOX, LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL | WS_TABSTOP, 20, 48, 77, 115
+    CONTROL "", 1070, LISTBOX, LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL | WS_HSCROLL | WS_TABSTOP, 139, 20, 177, 146
+    CONTROL "Write Current Window Text", 1009, BUTTON, BS_PUSHBUTTON | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 172, 189, 110, 17
+END
+
+
+//// FILE MENU DIALOGS
+IDD_VIEWLOG_FILE DIALOG 0, 0, 313, 177
+STYLE DS_SETFONT | WS_MAXIMIZEBOX | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+CAPTION "Log File"
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+FONT 8, "MS Sans Serif"
+BEGIN
+    CONTROL "Close", 1047, BUTTON, BS_DEFPUSHBUTTON | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 20, 142, 50, 14
+    CONTROL "", 1001, LISTBOX, LBS_NOTIFY | LBS_NOINTEGRALHEIGHT | WS_CHILD | WS_VISIBLE | WS_BORDER | WS_VSCROLL | WS_HSCROLL | WS_TABSTOP, 17, 18, 274, 105
+    CONTROL "Clear Log File", 1009, BUTTON, BS_PUSHBUTTON | WS_CHILD | WS_VISIBLE | WS_TABSTOP, 81, 143, 74, 15
+END
+
+
+//// HELP MENU DIALOGS
+IDD_ABOUTBOX DIALOGEX 0, 0, 321, 230
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION ""
+FONT 8, "MS Shell Dlg"
+BEGIN
+    LTEXT           "PTDiag Open - Win32", IDC_STATIC, 42, 14, 220, 22, SS_NOPREFIX
+    LTEXT           "Copyright (c) 2022", IDC_STATIC,42,26,114,8
+    DEFPUSHBUTTON   "OK", IDOK, 113,41,50,14, WS_GROUP
+    PUSHBUTTON      "Display Firmware Builds", IDC_STATIC, 50, 41, 50, 14, WS_GROUP
+END
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_ABOUTBOX, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 163
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 55
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+1 TEXTINCLUDE
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE
+BEGIN
+    "#ifndef APSTUDIO_INVOKED\r\n"
+    "#include ""targetver.h""\r\n"
+    "#endif\r\n"
+    "#define APSTUDIO_HIDDEN_SYMBOLS\r\n"
+    "#include ""windows.h""\r\n"
+    "#undef APSTUDIO_HIDDEN_SYMBOLS\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE
+BEGIN
+    "\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+   IDC_PTDIAG          "PTDIAG"
+   IDS_APP_TITLE       "Pass Thru Diagnostics"
+END
+
+#endif
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE resource.
+//
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
