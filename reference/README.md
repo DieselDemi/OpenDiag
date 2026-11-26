@@ -13,6 +13,16 @@
 
 The original executables stay private under `exes/`, outside Git. To check a reference set: `shasum -a 256 -c reference/SHA256SUMS`. To regenerate the CSV: `python3 tools/inventory.py > inventory.new.csv` and compare with the checked-in file. The script reads PE resources without executing the files and refuses a hash mismatch.
 
+## Build verification (0.1.0 development)
+
+| Build | Evidence |
+|---|---|
+| macOS arm64, Qt 6.12 | All four CTest suites passed. Mounted the DMG, verified the ad-hoc bundle signature, and ran simulator/replay and image tests directly from the mounted copy. |
+| Ubuntu 24.04 amd64, distro Qt 6.4 | All four suites passed in an x86-64 Linux container. Installed the generated DEB and ran the session test against its installed driver and simulator. |
+| Windows x64 app and x86 helper, MinGW | Both compiled. The x64 and x86 hosts each pinged and read the simulated PCM through a matching Windows DLL under CrossOver. The Windows Qt GUI smoke test faulted in QtGui under CrossOver; native Windows GUI and installer validation are outstanding. |
+
+These are software tests. There are no qualified hardware combinations or validated programming workflows in this release.
+
 ## Feature matrix
 
 | Workflow / reference evidence | Current implementation | What closes the row |

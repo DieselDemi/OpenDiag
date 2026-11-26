@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build qt6-base-dev qt6-qpa-plugins dpkg-dev
+        run: sudo apt-get update && sudo apt-get install -y ninja-build qt6-base-dev qt6-qpa-plugins dpkg-dev file
       - if: runner.os != 'Linux'
         uses: jurplel/install-qt-action@v4
         with:
