@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=OpenDiag
+Comment=Ford PCM diagnostics and firmware file inspection
+Type=Application
+Exec=OpenDiag
+Icon=applications-engineering
+Categories=Utility;Electronics;
+Terminal=false

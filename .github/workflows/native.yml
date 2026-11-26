@@ -1,0 +1,41 @@
+name: Native build, test and package
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build qt6-base-dev qt6-qpa-plugins dpkg-dev
+      - if: runner.os != 'Linux'
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          cache: true
+      - if: runner.os == 'macOS'
+        run: test "$(uname -m)" = arm64
+      - if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          cmake -S . -B build32 -A Win32 -DOPENDIAG_WORKER_ONLY=ON && cmake --build build32 --config Release && ctest --test-dir build32 -C Release --output-on-failure
+      - if: runner.os == 'Windows'
+        run: cmake -S . -B build -A x64 -DOPENDIAG_DEPLOY_QT=ON "-DOPENDIAG_X86_WORKER=$pwd/build32/Release/opendiag-driver-x86.exe"
+      - if: runner.os != 'Windows'
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DOPENDIAG_DEPLOY_QT=${{ runner.os == 'macOS' && 'ON' || 'OFF' }}
+      - run: cmake --build build --config Release
+      - run: ctest --test-dir build -C Release --output-on-failure
+      - run: cpack --config build/CPackConfig.cmake -C Release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenDiag-${{ matrix.os }}
+          path: |
+            build/packages/*.dmg
+            build/packages/*.exe
+            build/packages/*.deb
+          if-no-files-found: error
