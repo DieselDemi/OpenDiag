@@ -288,7 +288,51 @@ Window::Window() {
                 note(e.what());
             }
     });
-    program->setTitle("&Image preparation (offline)");
+    program->setTitle("&Programming");
+    program->addAction("Send programming command…", this, [this] {
+        if (state != Ready) {
+            note("Connect before sending a programming command");
+            return;
+        }
+        bool ok = false;
+        auto cmd = QInputDialog::getText(
+            this, "Programming command",
+            "Command: session, security, erase, routine, request-download, transfer, transfer-exit, flash, reset, or uds",
+            QLineEdit::Normal, {}, &ok);
+        if (ok && !cmd.trimmed().isEmpty())
+            send(cmd.trimmed(), Programming);
+    });
+    auto addProgram = [this, program](const QString &label, const QString &profile) {
+        program->addAction(label, this, [this, profile] {
+            if (state != Ready) {
+                note("Connect before programming");
+                return;
+            }
+            auto file = QFileDialog::getOpenFileName(this, "Programming image", {},
+                                                     "Images (*.bin *.BIN *.hex *.HEX *.h32 *.H32 *.vbf *.VBF)");
+            if (file.isEmpty())
+                return;
+            bool ok = false;
+            auto address = QInputDialog::getText(this, "Programming address", "Start address (hex)",
+                                                 QLineEdit::Normal, "0", &ok);
+            if (!ok)
+                return;
+            auto security = QInputDialog::getText(
+                this, "Security access",
+                "SECURITY_PROFILE LEVEL_HEX SECURITY_HEX, or 'none' to skip",
+                QLineEdit::Normal, "none", &ok);
+            if (!ok)
+                return;
+            send("program " + profile + ' ' + address.trimmed() + ' ' + file + ' ' + security.trimmed(),
+                 Programming);
+        });
+    };
+    addProgram("PCM programming…", "pcm");
+    addProgram("Generic programming…", "generic");
+    addProgram("Block write…", "block");
+    addProgram("KAM restore…", "kam");
+    addProgram("VID/TRID restore…", "vid-trid");
+    program->addSeparator();
     program->addAction("Compare calibration with backup…", this, [this] {
         auto backup = QFileDialog::getOpenFileName(this, "Full raw backup", {}, "Binary (*.bin *.BIN)");
         if (backup.isEmpty())
@@ -475,7 +519,7 @@ Window::Window() {
 }
 void Window::setState(State next) {
     state = next;
-    bool ready = state == Ready, online = ready || state == QuickRead || state == Acquisition;
+    bool ready = state == Ready, online = ready || state == QuickRead || state == Acquisition || state == Programming;
     providers->setEnabled(state == Offline);
     browse->setEnabled(state == Offline);
     profiles->setEnabled(state == Offline);
@@ -505,7 +549,7 @@ void Window::send(const QString &cmd, State owner) {
         return;
     }
     setState(owner);
-    watchdog->start(8000);
+    watchdog->start(owner == Programming ? 120000 : 8000);
     worker->write(cmd.toLatin1() + "\n");
 }
 void Window::readLines() {
@@ -518,6 +562,8 @@ void Window::readLines() {
         }
         if (state == QuickRead && line.startsWith("REQUEST "))
             watchdog->start(8000);
+        if (state == Programming && (line.startsWith("REQUEST ") || line.startsWith("PROGRESS ")))
+            watchdog->start(120000);
         bool ok = line.startsWith("OK ");
         if (!ok && !line.startsWith("ERR "))
             continue;

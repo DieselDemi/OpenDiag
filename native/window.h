@@ -22,7 +22,7 @@ class Window : public QWidget {
     void closeEvent(QCloseEvent *event) override;
 
   private:
-    enum State { Offline, Opening, Ready, QuickRead, Acquisition, Scanning, Closing } state = Offline;
+    enum State { Offline, Opening, Ready, QuickRead, Acquisition, Programming, Scanning, Closing } state = Offline;
     QProcess *worker;
     QTimer *watchdog, *clock;
     QComboBox *providers, *profiles, *op;

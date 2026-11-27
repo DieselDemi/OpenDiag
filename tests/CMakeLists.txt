@@ -11,6 +11,9 @@ add_test(NAME mx32-config-corpus COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_S
 add_executable(diagnostics-test diagnostics.cpp)
 target_link_libraries(diagnostics-test PRIVATE diagnostics)
 add_test(NAME diagnostic-decoding COMMAND diagnostics-test)
+add_executable(seed-key-test seed_key.cpp)
+target_link_libraries(seed-key-test PRIVATE seed_key)
+add_test(NAME seed-key-library COMMAND seed-key-test)
 add_test(NAME worker-cli-validation COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/worker-cli.py $<TARGET_FILE:opendiag-driver>)
 add_test(NAME hardware-only-build COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/hardware-only.py
     $<TARGET_FILE:OpenDiag> $<TARGET_FILE:opendiag-driver> $<TARGET_FILE:opendiag-image>)
