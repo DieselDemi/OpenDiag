@@ -48,6 +48,8 @@ jobs:
           if ($p.ExitCode -ne 0 -or !(Test-Path "$dest/bin/opendiag-driver-x86.exe")) { throw 'Incomplete installation' }
           python tests/session.py "$dest/bin/opendiag-driver.exe" "$dest/bin/opendiag-sim.dll"
           if ($LASTEXITCODE -ne 0) { throw 'Installed driver tests failed' }
+          python tests/programming.py "$dest/bin/opendiag-image.exe" "$dest/examples/programming" "$dest/bin/opendiag-driver.exe" "$dest/bin/opendiag-sim.dll"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed virtual ECU programming tests failed' }
           Remove-Item Env:QT_PLUGIN_PATH -ErrorAction SilentlyContinue
           $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
           $gui = Start-Process -FilePath "$dest/bin/OpenDiag.exe" -PassThru

@@ -2,6 +2,11 @@
 #include <algorithm>
 #include <cstring>
 #include <vector>
+#ifdef OPENDIAG_VIRTUAL_ECU
+#include "virtual_ecu.h"
+#include <memory>
+#include <cstdio>
+#endif
 
 using namespace j2534;
 #ifdef _WIN32
@@ -13,6 +18,12 @@ namespace {
 bool opened{}, connected{}, filtered{};
 U32 busFlags{}, txId{}, rxId{}, rpmReads{}, protocol{}, frameCounter{};
 std::vector<std::uint8_t> pending;
+#ifdef OPENDIAG_VIRTUAL_ECU
+std::unique_ptr<VirtualEcu> fileTarget;
+std::string software;
+char errorText[80] = "Invalid simulator operation";
+U32 virtualSupply = 0;
+#endif
 bool addr(const Message *m, unsigned id) {
     return m && m->protocol == iso15765 && m->size >= 4 && m->data[0] == (id >> 24) &&
            m->data[1] == ((id >> 16) & 255) && m->data[2] == ((id >> 8) & 255) && m->data[3] == (id & 255);
@@ -25,13 +36,44 @@ API PassThruOpen(void *, U32 *id) {
     *id = 0;
     return 0;
 }
+#ifdef OPENDIAG_VIRTUAL_ECU
+// Simulator extension: a real J2534 provider is never passed a workspace as its device name.
+API OpenDiagOpenWorkspace(const char *utf8, U32 *id) {
+    if (!utf8 || !id || opened)
+        return 7;
+    try {
+        auto ecu = std::make_unique<VirtualEcu>(QString::fromUtf8(utf8));
+        auto s = ecu->status();
+        if (!s["bootable"].toBool())
+            throw std::runtime_error("Virtual ECU cannot boot: resume or restore the programming job");
+        software = s["reportedSoftware"].toString().toStdString();
+        virtualSupply = U32(s["supplyMv"].toInt());
+        fileTarget = std::move(ecu);
+        opened = true;
+        *id = 0;
+        return 0;
+    } catch (const std::exception &e) {
+        std::snprintf(errorText, sizeof(errorText), "%s", e.what());
+        return 7;
+    }
+}
+#endif
 API PassThruClose(U32 id) {
     if (!opened || id != 0 || connected)
         return 7;
     opened = false;
+#ifdef OPENDIAG_VIRTUAL_ECU
+    fileTarget.reset();
+    software.clear();
+    std::strcpy(errorText, "Invalid simulator operation");
+#endif
     return 0;
 }
 API PassThruConnect(U32 dev, U32 proto, U32 flags, U32 baud, U32 *id) {
+#ifdef OPENDIAG_VIRTUAL_ECU
+    if (fileTarget && (proto != iso15765 || flags || baud != 500000))
+        return 3;
+#endif
     if (!opened || connected || dev || !id || (proto != iso15765 && proto != can) || (flags & ~0x100u) ||
         (baud != 125000 && baud != 250000 && baud != 500000 && baud != 1000000))
         return 3;
@@ -73,6 +115,10 @@ API PassThruStartMsgFilter(U32 ch, U32 type, Message *mask, Message *pattern, Me
     }
     if (!addr(pattern, rxId) || !addr(flow, txId))
         return 7;
+#ifdef OPENDIAG_VIRTUAL_ECU
+    if (fileTarget && txId != 0x7e0)
+        return 7;
+#endif
     filtered = true;
     *id = 0;
     return 0;
@@ -86,6 +132,10 @@ API PassThruStopMsgFilter(U32 ch, U32 id) {
 API PassThruIoctl(U32 ch, U32 code, void *, void *out) {
     if (connected && ch == 1 && code == 3 && out) {
         *static_cast<U32 *>(out) = 13600;
+#ifdef OPENDIAG_VIRTUAL_ECU
+        if (fileTarget)
+            *static_cast<U32 *>(out) = virtualSupply;
+#endif
         return 0;
     }
     if (!connected || ch != 1 || code != clearRx)
@@ -96,13 +146,21 @@ API PassThruIoctl(U32 ch, U32 code, void *, void *out) {
 API PassThruGetLastError(char *dst) {
     if (!dst)
         return 4;
+#ifdef OPENDIAG_VIRTUAL_ECU
+    std::strcpy(dst, errorText);
+#else
     std::strcpy(dst, "Invalid simulator operation");
+#endif
     return 0;
 }
 API PassThruReadVersion(U32 id, char *fw, char *dll, char *api) {
     if (!opened || id || !fw || !dll || !api)
         return 4;
     std::strcpy(fw, "simulated");
+#ifdef OPENDIAG_VIRTUAL_ECU
+    if (fileTarget)
+        std::strcpy(fw, "file-backed virtual ECU");
+#endif
     std::strcpy(dll, "OpenDiag simulator");
     std::strcpy(api, "04.04");
     return 0;
@@ -112,6 +170,18 @@ API PassThruWriteMsgs(U32 ch, Message *m, U32 *count, U32) {
         m->size <= 4 || m->size > sizeof(m->data))
         return 10;
     std::vector<std::uint8_t> q(m->data + 4, m->data + m->size);
+#ifdef OPENDIAG_VIRTUAL_ECU
+    if (fileTarget) {
+        if (q == decltype(q){0x22, 0xf1, 0x88} || q == decltype(q){0x22, 0xe6, 0x11}) {
+            pending = {0x62, q[1], q[2]};
+            pending.insert(pending.end(), software.begin(), software.end());
+        } else if (q == decltype(q){0x22, 0xd1, 0x00})
+            pending = {0x62, 0xd1, 0, 1};
+        else
+            pending = {0x7f, q[0], 0x31};
+        return 0;
+    }
+#endif
     if (q == decltype(q){0x22, 0xd1, 0x00})
         pending = {0x62, 0xd1, 0x00, 0x01};
     else if (q == decltype(q){0x22, 0xf1, 0x88} || q == decltype(q){0x22, 0xf1, 0x90}) {

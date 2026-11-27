@@ -1,5 +1,6 @@
 from binascii import crc_hqx
 from hashlib import sha256
+from zlib import crc32
 from pathlib import Path
 import struct
 import subprocess
@@ -46,11 +47,26 @@ with TemporaryDirectory() as folder:
     alt = base / 'vbf.hex'
     run('to-hex', vbf, alt)
     assert alt.read_bytes() == hexfile.read_bytes()
+    payload = hexfile.read_bytes()
+    for preamble in [b'  FILE NAME > SIMPLE.HEX\n  LAST DATA ADDRESS > 00020006\n',b'file data > Specified KAM Region\r\n']:
+        hexfile.write_bytes(preamble+payload);assert '9 bytes' in run('inspect',hexfile)
+    hexfile.write_bytes(b'unknown contents\n'+payload);run('inspect',hexfile,success=False)
+    hexfile.write_bytes(payload+b'file data > Specified KAM Region\n');run('inspect',hexfile,success=False)
     hexfile.write_text(':0100010042BC\n:0100000041BE\n:00000001FF\n')
     assert '2 bytes, 1 range' in run('inspect', hexfile)
     for bad in (header + block[:-1], header + block + block, header + block[:-2] + b'\0\0',
                 header.replace(b'0x00', b'0x10') + block):
         vbf.write_bytes(bad); run('inspect', vbf, success=False)
+    crc_header=header[:-1]+f'file_checksum = 0x{crc32(block):08X}; }}'.encode()
+    vbf.write_bytes(crc_header+block);assert 'body CRC-32 verified' in run('inspect',vbf)
+    vbf.write_bytes(crc_header+block[:3]+bytes([block[3]^1])+block[4:])
+    corrupt=subprocess.run([sys.argv[1],'inspect',vbf],text=True,capture_output=True,timeout=10)
+    assert corrupt.returncode and 'file checksum mismatch' in corrupt.stderr,corrupt
     for bad in (':0100000041BD\n:00000001FF', ':0100000041BE\n', ':0100000041BE\n'*2 + ':00000001FF',
                 ':0100000041BE\n:00000001FF\n:0100000041BE', ':010000004XBE\n:00000001FF'):
         hexfile.write_text(bad); run('inspect', hexfile, success=False)
+    binary.write_bytes(bytes.fromhex('FFFE 0002 7FFF 8000'))
+    assert run('table',binary,'1000','2','2','s16','motorola','csv','1000').splitlines()==['(address),col1,col2','(00001000),-2,2','(00001004),32767,-32768']
+    assert '(00000000),65279' in run('table',binary,'0','1','1','u16','intel','csv')
+    run('table',binary,'0','1','41','u8','intel','csv',success=False)
+    binary.write_bytes(struct.pack('<f',-1.25));assert '-1.25' in run('table',binary,'0','1','1','f32','intel','fixed')

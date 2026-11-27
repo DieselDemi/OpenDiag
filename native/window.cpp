@@ -3,6 +3,7 @@
 #include "can_monitor.h"
 #include "image.h"
 #include "monitor.h"
+#include "program_dialog.h"
 #include "viewer.h"
 #include <QApplication>
 #include <QCheckBox>
@@ -226,13 +227,25 @@ Window::Window() {
         });
         dlg.exec();
     });
-    connect(setup, &QMenu::aboutToShow, this, [this, general] { general->setEnabled(state == Offline); });
+    auto *virtualTarget = setup->addAction("Select virtual ECU workspace…", this, [this] {
+        auto p = QFileDialog::getExistingDirectory(this, "Select a programmed virtual ECU");
+        if (!p.isEmpty())
+            selectVirtualTarget(p);
+    });
+    connect(setup, &QMenu::aboutToShow, this, [this, general, virtualTarget] {
+        general->setEnabled(state == Offline && !providers->currentData(Qt::UserRole + 1).isValid());
+        virtualTarget->setEnabled(state == Offline);
+    });
     diagMenu->addAction("Data acquisition", this, [this] { tabs->setCurrentWidget(monitor); });
     diagMenu->addAction("Get DTCs", this, [this, quick] {
         tabs->setCurrentWidget(quick);
         op->setCurrentIndex(op->findData("ford-dtc"));
     });
     diagMenu->addAction("Read DTCs from module list…", this, [this] {
+        if (providers->currentData(Qt::UserRole + 1).isValid()) {
+            note("A file-backed virtual ECU exposes identification and supply voltage only");
+            return;
+        }
         if (state != Offline) {
             note("Disconnect before starting a multi-module scan");
             return;
@@ -263,6 +276,10 @@ Window::Window() {
         op->setCurrentIndex(op->findData("dtc"));
     });
     tools->addAction("Monitor CAN data…", this, [this] {
+        if (providers->currentData(Qt::UserRole + 1).isValid()) {
+            note("A file-backed virtual ECU has no broadcast CAN traffic");
+            return;
+        }
         if (state != Offline) {
             note("Disconnect the diagnostic session to use the raw CAN channel");
             return;
@@ -274,6 +291,25 @@ Window::Window() {
     tools->addAction("Read DMRs from image…", this, [this] {
         tabs->setCurrentWidget(monitor);
         monitor->chooseSnapshot();
+    });
+    tools->addAction("Read translated table from image…", this, [this] {
+        auto path = QFileDialog::getOpenFileName(this, "Select memory image");
+        if (!path.isEmpty())
+            try {
+                viewImage(this, path, true);
+            } catch (const std::exception &e) {
+                note(e.what());
+            }
+    });
+    program->addAction("Program or recover virtual ECU…", this, [this] {
+        QString selected;
+        {
+            ProgramDialog dialog(this);
+            dialog.exec();
+            selected = dialog.diagnosticTarget();
+        }
+        if (!selected.isEmpty())
+            selectVirtualTarget(selected);
     });
     program->addAction("Compare calibration with backup…", this, [this] {
         auto backup = QFileDialog::getOpenFileName(this, "Full raw backup", {}, "Binary (*.bin *.BIN)");
@@ -341,6 +377,27 @@ Window::Window() {
             } catch (const std::exception &e) {
                 note(e.what());
             }
+    });
+    utility->addAction("MX32 configuration block to VBF…", this, [this] {
+        bool ok;
+        auto profile = QInputDialog::getItem(this, "MX32 configuration block", "Profile", mxConfigProfiles(), 0,
+                                             false, &ok);
+        if (!ok)
+            return;
+        auto input = QFileDialog::getOpenFileName(this, "Open addressed configuration block", {},
+                                                  "H32 or HEX (*.h32 *.H32 *.hex *.HEX)");
+        if (input.isEmpty())
+            return;
+        auto output = QFileDialog::getSaveFileName(this, "New VBF file",
+                                                   QFileInfo(input).completeBaseName() + ".vbf", "VBF (*.vbf)");
+        if (output.isEmpty())
+            return;
+        try {
+            convertMxConfig(profile, input, output);
+            note("Created " + output + " (" + profile + ")");
+        } catch (const std::exception &e) {
+            note(e.what());
+        }
     });
     help->addAction("Usage notes", this, [this] {
         QMessageBox::information(this, "OpenDiag",
@@ -414,7 +471,10 @@ Window::Window() {
         setState(Opening);
         note("Opening " + providers->currentText());
         watchdog->start(10000);
-        worker->start(workerFor(path), QStringList{path} + profiles->currentData().toStringList());
+        auto directory = providers->currentData(Qt::UserRole + 1).toString();
+        worker->start(workerFor(path), directory.isEmpty()
+                                           ? QStringList{path} + profiles->currentData().toStringList()
+                                           : QStringList{path, "--virtual", directory});
     });
     connect(run, &QPushButton::clicked, this, [this] {
         note(op->currentText());
@@ -429,14 +489,35 @@ Window::Window() {
         note(marker);
     };
     monitor->stateChanged = [this] { setState(state); };
+    connect(providers, &QComboBox::currentIndexChanged, this, [this] {
+        if (providers->currentData(Qt::UserRole + 1).isValid())
+            profiles->setCurrentIndex(0);
+        setState(state);
+    });
     setState(Offline);
+}
+void Window::selectVirtualTarget(const QString &directory) {
+    if (state != Offline) {
+        note("Disconnect the active session before selecting a virtual ECU");
+        return;
+    }
+    auto path = QFileInfo(directory).absoluteFilePath();
+    int row = providers->findData(path, Qt::UserRole + 1);
+    if (row < 0) {
+        providers->addItem("Virtual ECU: " + QFileInfo(path).fileName(), providers->itemData(0));
+        row = providers->count() - 1;
+        providers->setItemData(row, path, Qt::UserRole + 1);
+    }
+    providers->setCurrentIndex(row);
+    op->setCurrentIndex(op->findData("module"));
+    tabs->setCurrentIndex(0);
 }
 void Window::setState(State next) {
     state = next;
     bool ready = state == Ready, online = ready || state == QuickRead || state == Acquisition;
     providers->setEnabled(state == Offline);
     browse->setEnabled(state == Offline);
-    profiles->setEnabled(state == Offline);
+    profiles->setEnabled(state == Offline && !providers->currentData(Qt::UserRole + 1).isValid());
     link->setText(state == Offline ? "&Connect" : state == Scanning ? "Stop scan" : "&Disconnect");
     link->setEnabled(state == Offline || state == Scanning || online);
     run->setEnabled(ready && !monitor->running());
@@ -507,14 +588,27 @@ void Window::closeEvent(QCloseEvent *event) {
         event->ignore();
         return;
     }
+    shutdownSession();
+    event->accept();
+}
+void Window::shutdownSession() {
     if (worker->state() != QProcess::NotRunning) {
+        bool alreadyClosing = state == Closing;
         setState(Closing);
-        worker->write("quit\n");
-        worker->closeWriteChannel();
+        if (!alreadyClosing) {
+            worker->write("quit\n");
+            worker->closeWriteChannel();
+        }
         if (!worker->waitForFinished(1500)) {
             worker->kill();
             worker->waitForFinished(1000);
         }
     }
-    event->accept();
+}
+Window::~Window() {
+    // A QProcess destructor can emit finished after the earlier widget children are gone.
+    disconnect(worker, nullptr, this, nullptr);
+    clock->stop();
+    watchdog->stop();
+    shutdownSession();
 }

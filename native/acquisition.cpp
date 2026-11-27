@@ -16,20 +16,6 @@
 
 namespace acq {
 [[noreturn]] static void fail(const QString &s) { throw std::runtime_error(s.toStdString()); }
-QByteArray readFile(const QString &path, qsizetype limit) {
-    QFile f(path);
-    if (!f.open(QIODevice::ReadOnly))
-        fail(f.errorString());
-    auto bytes = f.read(limit + 1);
-    if (f.error() || bytes.size() > limit)
-        fail("Unreadable or oversized file: " + path);
-    return bytes;
-}
-void writeFile(const QString &path, const QByteArray &bytes) {
-    QSaveFile f(path);
-    if (!f.open(QIODevice::WriteOnly) || f.write(bytes) != bytes.size() || !f.commit())
-        fail(f.errorString());
-}
 static int integer(const QString &s, int low, int high, int base = 10) {
     bool ok;
     int x = s.toInt(&ok, base);

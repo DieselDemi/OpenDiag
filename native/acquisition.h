@@ -1,4 +1,5 @@
 #pragma once
+#include "files.h"
 #include <QByteArray>
 #include <QList>
 #include <QStringList>
@@ -6,8 +7,8 @@
 #include <optional>
 
 namespace acq {
-QByteArray readFile(const QString &path, qsizetype limit);
-void writeFile(const QString &path, const QByteArray &bytes);
+using fileio::readFile;
+using fileio::writeFile;
 struct Channel {
     QString name, command, record, formula, units;
     int size, point, bit, index;

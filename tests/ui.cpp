@@ -1,5 +1,6 @@
 #include "../native/window.h"
 #include "../native/monitor.h"
+#include "../native/program_dialog.h"
 #include <QApplication>
 #include <QComboBox>
 #include <QPlainTextEdit>
@@ -9,6 +10,7 @@
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QTemporaryDir>
+#include <QFileInfo>
 #include <iostream>
 
 int main(int argc, char **argv) {
@@ -82,5 +84,47 @@ int main(int argc, char **argv) {
         monitor->captured().rows.back().values.at(0) != 860)
         return 7;
     connect->click();
-    return waitLog("Disconnected") && !read->isEnabled() ? 0 : 5;
+    if (!waitLog("Disconnected") || read->isEnabled())
+        return 5;
+    auto folder = QFileInfo(app.arguments().at(1)).dir().filePath("programming/");
+    auto workspace = tmp.filePath("virtual-module");
+    VirtualEcu::create(workspace, folder + "device.json");
+    {
+        ProgramDialog dialog;
+        dialog.openTarget(workspace);
+        dialog.prepareJob(folder + "generic.json");
+        dialog.show();
+        dialog.findChild<QPushButton *>("programStep")
+            ->click(); // Close while the virtual ECU is in programming mode.
+    }
+    if (VirtualEcu(workspace).phase() != "erasing")
+        return 8;
+    {
+        ProgramDialog dialog;
+        dialog.openTarget(workspace);
+        dialog.show();
+        auto *runJob = dialog.findChild<QPushButton *>("programRun");
+        runJob->click();
+        QElapsedTimer clock;
+        clock.start();
+        while (runJob->isEnabled() && clock.elapsed() < 5000)
+            QTest::qWait(5);
+        if (runJob->isEnabled())
+            return 9;
+    }
+    window.selectVirtualTarget(workspace);
+    connect->click();
+    if (!waitLog("file-backed virtual ECU"))
+        return 10;
+    t.restart();
+    while (!read->isEnabled() && t.elapsed() < 4000)
+        QTest::qWait(5);
+    read->click();
+    if (!waitLog("OK SIM-B"))
+        return 11;
+    connect->click();
+    t.restart();
+    while (connect->text() != "&Connect" && t.elapsed() < 4000)
+        QTest::qWait(5);
+    return connect->text() == "&Connect" ? 0 : 12;
 }

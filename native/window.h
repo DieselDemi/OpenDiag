@@ -15,6 +15,8 @@ class Monitor;
 class Window : public QWidget {
   public:
     Window();
+    ~Window() override;
+    void selectVirtualTarget(const QString &directory);
 
   protected:
     void closeEvent(QCloseEvent *event) override;
@@ -34,4 +36,5 @@ class Window : public QWidget {
     void send(const QString &command, State owner);
     void note(const QString &s);
     void readLines();
+    void shutdownSession();
 };

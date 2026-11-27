@@ -1,6 +1,6 @@
 # OpenDiag
 
-OpenDiag is a native Qt 6 reconstruction of the Ford PTDIAG diagnostics and programming suite. Version 0.2 provides **read-only vehicle diagnostics, data acquisition and offline programming-file tools**. ECU flashing and the other original workflows still outstanding are tracked in the [behavior ledger](reference/README.md).
+OpenDiag is a native Qt 6 reconstruction of the Ford PTDIAG diagnostics and programming suite. Version 0.3 adds **programming and interruption recovery on a persistent virtual ECU**. The J2534 connection to a real vehicle is still read-only. The [behavior ledger](reference/README.md) distinguishes file compatibility, simulated operations, and hardware qualification.
 
 ## Try it without a vehicle
 
@@ -17,6 +17,14 @@ On macOS, `open build/native/OpenDiag.app`. On Linux, run `build/native/OpenDiag
 Select **Simulator (no vehicle) → Connect → Ping module → Read**. Expect `GGDS (D100 = 0x01)`. Select **Read module software ID → Read** to get `SIM-PCM-001`. **File → Save session log** exports the most recent 10,000 log lines, including driver/firmware versions, request/response payloads, and acquisition boundaries.
 
 `opendiag-driver --replay OpenDiag.log` decodes an exported session again without loading a provider or transmitting. It rejects incomplete transactions and mismatched replies.
+
+### Try programming and recovery
+
+1. Open **Programming → Program or recover virtual ECU → Try PCM example**. Choose a **new directory**. The example starts at software ID `SIM-A`; the job selects `SIM-B` using a PTDIAG-style lookup table. The example IDs, voltages and memory layout are synthetic.
+2. Use **Single step** to enter programming and erase one sector. Close the dialog. Reopen that workspace: the bank is now unbootable, and **Run / resume** continues from the saved checkpoint. OpenDiag verifies the complete bank before reset, including bytes outside the update and the retained VID/TRID fields.
+3. Select **Select this virtual ECU in Diagnostics → Connect → Read**. The simulated J2534 provider reads `SIM-B` from the verified bank. Disconnect to release the workspace lock. Reopen the programmer and **Restore pre-job backup**; Diagnostics will now read `SIM-A` again.
+
+PCM, generic (including a mapped RAM loader image), block and configuration jobs are also available from the CLI. A recovery kit reconstructs a workspace without the original input files. See [programming profiles, recipes and commands](reference/virtual-programming.md).
 
 ### Try a complete PTDIAG acquisition
 
@@ -55,7 +63,7 @@ Copy-Item build32/Release/opendiag-driver-x86.exe build/native/
 
 ## Offline files
 
-**Utility → View HEX, VBF or binary file** shows sparse ranges, 256-byte hex/ASCII pages, the original VBF header for supported files, and HEX export. `opendiag-image inspect FILE` reports format, byte count, ranges and addresses. For a raw `.bin`, displayed addresses are offsets from zero. **Programming** supports offline lookup-table matching and comparing a candidate against a mapped backup. The comparison reports changed and retained bytes and the projected digest; it does not write either file or establish ECU compatibility.
+**Utility → View HEX, VBF or binary file** shows sparse ranges, 256-byte hex/ASCII pages, supported header text and HEX export. **Tools → Read translated table from image** displays signed, unsigned or float cells in either byte order, with CSV or fixed-width export. `opendiag-image inspect FILE` reports format, byte count, ranges and addresses. For a raw `.bin`, displayed addresses are offsets from zero unless a base is supplied. **Programming** also supports offline lookup matching and candidate/backup comparison.
 
 ```sh
 opendiag-image inspect calibration.vbf
@@ -64,9 +72,14 @@ opendiag-image to-hex block.bin new.hex 10000  # explicit hexadecimal base addre
 opendiag-image vid vid-block.bin 2            # specify original layout 0, 1 or 2
 opendiag-image lookup generic lookup.txt 8C3A-14C204-AF
 opendiag-image compare backup.bin 10000 calibration.vbf
+opendiag-image table backup.bin 10000 8 4 s16 motorola csv 10000
+opendiag-image mx32-config --list
+opendiag-image mx32-config vid128 reference/golden/mx32/vid128/Sample.h32 new-config.vbf
 ```
 
-The CLI is beside the driver helper (inside `OpenDiag.app/Contents/MacOS` on Mac). HEX export requires a new output file. Intel HEX checks record length, checksum, EOF, extended addresses and overlaps; type 03/05 entry records survive conversion. `.h32` is accepted only when it actually contains Intel HEX records. The VBF reader covers uncompressed 2.x files with big-endian address/length blocks and CRC-16/CCITT-FALSE per block. It does not validate a whole-file signature or copy VBF header metadata into HEX. Input limit: 64 MiB. The VID command reports raw bytes at the recovered offsets, not inferred engineering values.
+The CLI is beside the driver helper (inside `OpenDiag.app/Contents/MacOS` on Mac). HEX export requires a new output file. Intel HEX checks record length, checksum, EOF, extended addresses and overlaps; type 03/05 entry records survive conversion. Recognized PTDIAG KAM and Ford text preambles are shown separately from the data. `.h32` is accepted only when it contains Intel HEX records. The VBF reader covers uncompressed 2.x files with big-endian address/length blocks and CRC-16/CCITT-FALSE per block. It verifies the CRC-32 of the binary body when `file_checksum` is present. This is not signature verification. Input limit: 64 MiB. The VID command reports raw bytes at the recovered offsets, not inferred engineering values.
+
+**Utility → MX32 configuration block to VBF** converts complete VID 128-byte, TRID 128/256-byte and combined VID+TRID 384-byte profiles to VBF 2.4. Machine-readable header fields and the entire binary body are compared with [outputs from MX32 V337](reference/golden/mx32/); producer/date comments differ. Gaps, extra data, and the wrong address/size are rejected. This does not implement the other MX32 calibration profiles.
 
 ## Build layout and packages
 

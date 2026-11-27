@@ -1,0 +1,11 @@
+{
+  "format": "opendiag-program-job/1",
+  "mode": "pcm",
+  "part": "OD-LAB-PCM",
+  "from": "SIM-A",
+  "to": "SIM-B",
+  "minMv": 12000,
+  "maxMv": 15000,
+  "lookup": {"file": "pcm.tbl", "sha256": "d1a43b9a48e1d1085bad2141f20ba989c95825fe5b3b0bf21a9d93b3ba27d638"},
+  "primary": {"file": "update.hex", "sha256": "a3ffa145ec006eae98fe8e475225711d1b1aac05c00f7f418cad13c42fb32a8e"}
+}

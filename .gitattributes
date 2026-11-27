@@ -1,1 +1,5 @@
 reference/golden/*.cfg -text whitespace=cr-at-eol
+reference/golden/mx32/**/*.h32 -text whitespace=cr-at-eol
+reference/golden/mx32/**/*.VBF binary
+reference/examples/programming/*.hex text eol=lf
+reference/examples/programming/*.tbl text eol=lf

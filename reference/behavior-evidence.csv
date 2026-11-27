@@ -24,3 +24,13 @@ menu,174,40357,partial,Offline generic table full-ID match and primary/SBL files
 menu,102,40089,partial,Read-only classic CAN monitor and capture; not electrical listen-only,simulator-session
 menu,156,40169,partial,Read multi-module CAN list with UDS mask; unsupported networks reported per entry,simulator-session
 menu,156,40551,partial,Select ISO 14229 status mask for multi-module read,simulator-session
+menu,102,40022,virtual-only,PCM job with lookup selection erase transfer verification reset and interruption recovery on file-backed target,virtual-programming-recovery;desktop-session
+menu,102,40173,virtual-only,Generic job with mapped secondary RAM image and checked retention; no physical bootloader execution,virtual-programming-recovery
+menu,102,40332,virtual-only,Read address range or program explicit block in a virtual bank with sector preservation,virtual-programming-recovery
+menu,102,40365,partial,Original region config import and KAM HEX backup/restore on the virtual bank,virtual-programming-recovery
+menu,102,40408,partial,Translate numeric rows and columns from a saved image with signed unsigned or float cells and selectable byte order,image-files
+control,110,1010,virtual-only,Automatic PCM job on file-backed target,virtual-programming-recovery;desktop-session
+control,110,1020,virtual-only,Checkpointed virtual sector erase,virtual-programming-recovery
+control,110,1021,virtual-only,Program changed sectors and read back the bytes,virtual-programming-recovery
+control,110,1095,virtual-only,Preserve explicitly mapped VID field through erase and program,virtual-programming-recovery
+control,110,1164,virtual-only,Preserve explicitly mapped TRID field through erase and program,virtual-programming-recovery
