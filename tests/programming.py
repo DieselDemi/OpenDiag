@@ -114,6 +114,10 @@ with tempfile.TemporaryDirectory() as tmp:
         export=root/(mode+'.bin'); invoke('export',ws,export);assert export.read_bytes()==expected
         invoke('export',ws,export,error='')
         backup=root/(mode+'.backup');invoke('backup',ws,backup);assert backup.read_bytes()==initial
+        if mode=='pcm':
+            with flash.open('r+b') as f: f.seek(72); f.write(b'BAD!')
+            assert not invoke('status',ws)['bootable']
+            invoke('run',ws,error='sha-256')
         assert invoke('restore',ws)['reportedSoftware']=='SIM-A'
 
     # Transfer personal data using addressed HEX, independently of the containing flash sectors.

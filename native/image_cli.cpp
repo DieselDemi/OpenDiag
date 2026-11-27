@@ -59,7 +59,11 @@ static void ecuCommand(const QStringList &args) {
         ecu.exportKamData(args[2], args[3]);
     else if (!(action == "create" && args.size() == 3) && !(action == "status" && args.size() == 2))
         throw std::runtime_error(usage);
-    std::cout << QJsonDocument(ecu.status()).toJson(QJsonDocument::Compact).constData() << '\n';
+    auto result = ecu.status();
+    if ((action == "step" || action == "run") && ecu.finished() && !result["bootable"].toBool())
+        throw std::runtime_error(
+            result["integrityError"].toString("Virtual bank did not verify").toStdString());
+    std::cout << QJsonDocument(result).toJson(QJsonDocument::Compact).constData() << '\n';
 }
 
 static QString vidFields(const QString &path, int layout) {
