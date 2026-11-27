@@ -12,6 +12,7 @@ struct Message {
 };
 static_assert(sizeof(Message) == 4152 && offsetof(Message, data) == 24);
 constexpr U32 iso15765 = 6, flowControl = 3, pad = 0x40, clearRx = 8;
+constexpr U32 can = 5, passFilter = 1, extendedId = 0x100;
 constexpr Status timeout = 9, empty = 0x10;
 #ifdef _WIN32
 #define PT_CALL __stdcall
@@ -27,4 +28,4 @@ using Messages = Status(PT_CALL *)(U32, Message *, U32 *, U32);
 using Ioctl = Status(PT_CALL *)(U32, U32, void *, void *);
 using LastError = Status(PT_CALL *)(char *);
 using Version = Status(PT_CALL *)(U32, char *, char *, char *);
-}
+} // namespace j2534

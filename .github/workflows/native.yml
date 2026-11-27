@@ -30,7 +30,37 @@ jobs:
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DOPENDIAG_DEPLOY_QT=${{ runner.os == 'macOS' && 'ON' || 'OFF' }}
       - run: cmake --build build --config Release
       - run: ctest --test-dir build -C Release --output-on-failure
+      - if: runner.os == 'Windows'
+        name: Exercise the x64 GUI with a 32-bit provider on native Windows
+        shell: pwsh
+        run: |
+          Copy-Item build32/Release/opendiag-driver-x86.exe build/Release/
+          $env:OPENDIAG_TEST_PROVIDER = (Resolve-Path build32/Release/opendiag-sim.dll).Path
+          ctest --test-dir build -C Release -R '^desktop-session$' --output-on-failure
       - run: cpack --config build/CPackConfig.cmake -C Release
+      - if: runner.os == 'Windows'
+        name: Install and test the packaged driver
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem build/packages/*.exe).FullName
+          $dest = "$env:RUNNER_TEMP\OpenDiagInstalled"
+          $p = Start-Process -FilePath $installer -ArgumentList '/S',"/D=$dest" -Wait -PassThru
+          if ($p.ExitCode -ne 0 -or !(Test-Path "$dest/bin/opendiag-driver-x86.exe")) { throw 'Incomplete installation' }
+          python tests/session.py "$dest/bin/opendiag-driver.exe" "$dest/bin/opendiag-sim.dll"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed driver tests failed' }
+          Remove-Item Env:QT_PLUGIN_PATH -ErrorAction SilentlyContinue
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          $gui = Start-Process -FilePath "$dest/bin/OpenDiag.exe" -PassThru
+          try {
+            for ($i = 0; $i -lt 100; $i++) {
+              $gui.Refresh()
+              if ($gui.HasExited) { throw "Installed GUI exited: $($gui.ExitCode)" }
+              if ($gui.MainWindowTitle -like 'OpenDiag*') { break }
+              Start-Sleep -Milliseconds 100
+            }
+            if ($gui.MainWindowTitle -notlike 'OpenDiag*') { throw 'Installed GUI window did not appear' }
+            if (!$gui.CloseMainWindow() -or !$gui.WaitForExit(5000) -or $gui.ExitCode -ne 0) { throw 'Installed GUI failed to close' }
+          } finally { if (!$gui.HasExited) { $gui.Kill() } }
       - uses: actions/upload-artifact@v4
         with:
           name: OpenDiag-${{ matrix.os }}

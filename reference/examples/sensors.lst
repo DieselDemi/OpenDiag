@@ -1,0 +1,5 @@
+Name        Id        Type   Size   BPoint   SU   Scalar   Offset
+: rpm       1165      p      2      2        u    1.0000
+: vbat      1172      p      1      4        u    1.0000
+: coolant   05        1      1      0        u    1.0000   -40
+: freezeRPM 0C        2      2      2        u    1.0000

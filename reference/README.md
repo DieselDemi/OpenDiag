@@ -1,6 +1,6 @@
 # Recovery evidence and remaining work
 
-[`inventory.csv`](inventory.csv) maps 906 distinct dialog captions/menu command paths and resource IDs to the reference builds that contain them. A menu entry proves a surface exists, not what an ECU does when selected. The latest build is the breadth baseline; an older-only feature still needs a disposition.
+[`inventory.csv`](inventory.csv) maps 903 distinct dialog/menu entries to reference builds (800 PTDIAG entries). Four PE resource-name offsets in the earlier inventory resolve to the same `SELECTBOX` dialog. [`controls.csv`](controls.csv) adds controls, classes, captions and menu ownership. The latest build is the breadth baseline; older-only features still need a disposition.
 
 | Reference | Dialog IDs | Menu IDs | Use |
 |---|---:|---:|---|
@@ -11,9 +11,37 @@
 | PTDIAG 2293 MyCANIC FD | 124 | 38 | Primary named-function and UI reference |
 | MX32 V337 | 12 | 2 | Separate file conversion GUI/CLI |
 
-The original executables stay private under `exes/`, outside Git. To check a reference set: `shasum -a 256 -c reference/SHA256SUMS`. To regenerate the CSV: `python3 tools/inventory.py > inventory.new.csv` and compare with the checked-in file. The script reads PE resources without executing the files and refuses a hash mismatch.
+The originals stay private in `exes/`. Verify them with `shasum -a 256 -c reference/SHA256SUMS`. [`dialog-procedures.csv`](dialog-procedures.csv) records 482 bindings, including 122 in 2293, from direct dialog creation calls with literal template and callback arguments. A binding identifies a dialog handler, not the behavior of every branch.
 
-## Build verification (0.1.0 development)
+```sh
+python3 tools/inventory.py > inventory.new.csv
+python3 tools/inventory.py --controls > controls.new.csv
+python3 tools/inventory.py --callbacks /path/to/llvm-objdump > procedures.new.csv
+python3 tools/ledger.py > build/behavior-ledger.csv
+python3 tools/ledger.py --workflow acquisition
+python3 tools/ledger.py --older-only
+```
+
+The ledger joins [`workflows.csv`](workflows.csv), [`behavior-evidence.csv`](behavior-evidence.csv), menu ownership and recovered procedures. It has **2,269 PTDIAG locations** (676 menu paths and 1,593 control variants, including notifying static controls). Keys are scoped to the resource; duplicate build entries are reconciled. Each row has a prerequisite, expected result and qualification gate. Partial means only the stated subset is implemented. Other rows are unverified. Dynamic choices and ECU variants can add work without changing these counts.
+
+## Original application fixtures
+
+All five original PTDIAG EXEs were run separately under CrossOver. Using **Data Acquisition → File → Load Configuration File → Save Configuration File**, each wrote a [golden configuration](golden/) from the same [RPM/vbat input](examples/RPM-VBAT.cfg). The files retain their CRLF bytes and original scratch-directory annotation. `acquisition-formats` decodes each and checks byte-identical saves without edits. The 1980 output lacks the newer headers and units column. The running 2293 capture status window reported a **200,000**-set default FIFO, despite its help describing 100,000. These are original file outputs, not vehicle traces.
+
+To repeat on native Windows with a private reference set, build with `BUILD_TESTING=ON`, then run in a desktop session:
+
+```powershell
+.\tools\reference-windows.ps1 -ReferenceExe .\exes\PTDIAG_2293_MyCANIC_FD.EXE `
+    -Probe .\build\tests\Release\opendiag-reference-probe.exe -OutputDirectory C:\Temp\OpenDiagRef2293
+```
+
+Choose a **new** output directory. The probe uses the acquisition file menus and checks the resulting file. It selects no Connect or programming action. Native Windows CI separately exercises the replacement's x64 GUI, x86 helper and installed driver with the simulator, without requiring the private EXEs.
+
+## Build verification
+
+For **0.2.0**, all seven CTest suites passed on Apple silicon and Ubuntu 24.04 amd64, including the original-file corpus, acquisition GUI workflow, replay, error paths and optional private DTC dictionary test. The mounted DMG's signature, bundled examples, driver and image CLI were checked; the DEB was installed and its installed worker tested. The Windows x64 application and x86 driver host cross-compiled. Both worker architectures read voltage, acquisition data, the software lookup ID and Mode 9 data with matching simulator DLLs under CrossOver. The GUI test and packaged Windows application faulted in QtGui under CrossOver. No native Windows runner or physical adapter/ECU was used for these 0.2.0 results.
+
+Earlier **0.1.0** checks:
 
 | Build | Evidence |
 |---|---|
@@ -29,11 +57,12 @@ These are software tests. There are no qualified hardware combinations or valida
 |---|---|---|
 | Connect and Ping, `BoxConnect`/`PingModule` | Generic 04.04 worker, simulator, PCM D100 ping. In 2293 `PingModule` asks `lptGetPIDValue` for D100; values 01/02/03 report GGDS, 81/85/87 GDS. OpenDiag distinguishes reply, rejection and timeout. | Compare successful and unsupported/rejected cases on a known module and two adapter makes. Compare the original's fallback status separately. |
 | Module identification, F188/F190 in 2293 | Read application software ID and VIN. Hex display for non-text software IDs. | Match original and native results on the same module. |
-| Get DTCs (40032), OBD-II (40079), data acquisition (40031) | Emissions Mode 03 DTCs and Mode 01 RPM, single shot or sampled; timestamped log export. | Compare bench output; add Ford-specific DTC statuses, freeze frames, PID/DMR definition lists and scaling using real examples. |
-| Hex/VBF/binary views (40415/40424/40637); MX32 conversion | Inspect raw BIN, Intel HEX/H32 records and the CRC-checked uncompressed VBF subset. HEX export preserves addresses and data. | Original-to-new golden input/output pairs for each MX32 size/option in scope, including Ford text headers and compressed VBF variants. |
-| Init/configuration, VID, KAM | All three original VID offset layouts available for offline inspection. | Collect `PTDIAG.INI`, PID/DMR/OSC examples and corresponding original output; verify layout selection, units, and backup/restore per family. |
-| PCM programming (40022), generic programming (40173), block read/write (40332) | Not implemented. No erase, download or reset is sent by this release. | Choose first ECU, match documented prerequisites and image identity, prove preservation/verification and interrupted-session recovery on a spare unit. Then repeat per family. |
-| Other networks and tooling | One physical HSCAN PCM profile. SCP/J1850, ISO9141, MS-CAN, secondary HS-CAN, CAN FD, service routines and engineering utilities remain in the inventory. | Establish appropriate provider capability, traces, expected results and independent bench tests per workflow. Use supported OEM authorization where required. |
+| Get DTCs (40032), OBD-II (40079) | Mode 03/07/0A, ISO 14229 DTCs and masks, multi-module read for standard `CAN` addresses, Mode 1/2/6/9 supported-ID scans. Optional local import of 10,170 KWP and 13,309 UDS descriptions. | Compare real results across networks; add snapshots, complete translations and self-tests. |
+| Data acquisition (40031) | Config/PID list import and selection, scaling and arithmetic formulas, single-rate monitoring, min/max, FIFO, high/post triggers, numeric CSV save/reopen and raw session replay. | Compare with original bench samples; recover rapid mode, advanced formulas, broadcast, OSC and live DMR. |
+| Hex/VBF/binary views (40415/40424/40637); MX32 conversion | Paged sparse ranges, VBF headers and HEX export for supported formats. | Golden conversions for MX32 size/option profiles, Ford headers and compressed VBF variants. |
+| Init/configuration, VID, KAM | Acquisition INI import, offline DMR snapshots, all three original VID layouts available for offline inspection. | Compare wider INI, DMR and OSC inputs and qualify backup/restore per family. |
+| PCM programming (40022), generic programming (40173), block read/write (40332) | Offline lookup matching and candidate vs backup comparison, E611 lookup-ID and voltage reads. No live erase, download or reset. | Choose a spare recoverable ECU with a matching image and verify preservation, programming and interruption recovery per family. |
+| Other networks and tooling | Physical 11/29-bit ISO 15765 and raw classic CAN receive/filter and CSV export. Setting bitrate does not switch connector pins. | Qualify routing, legacy buses, FD, service and engineering functions with appropriate traces, authorization and bench hardware. |
 | Hardware-specific management | Original adapter management/firmware menus are inventoried separately from vehicle functions. | Agree which are superseded by vendor utilities; document any required equivalent. |
 
 ## First bench run

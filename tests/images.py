@@ -1,4 +1,5 @@
 from binascii import crc_hqx
+from hashlib import sha256
 from pathlib import Path
 import struct
 import subprocess
@@ -21,6 +22,12 @@ with TemporaryDirectory() as folder:
     assert hexfile.read_text().splitlines() == [':020000040001F9', ':02FFFE0031329E',
         ':020000040002F8', ':07000000333435363738397F', ':00000001FF']
     assert '9 bytes' in run('inspect', hexfile)
+    backup = base/'backup.bin'
+    backup.write_bytes(b'\0'*12)
+    preview = run('compare',backup,'1fffd',hexfile)
+    assert '9 changed bytes' in preview and sha256(b'\0'+b'123456789'+b'\0\0').hexdigest() in preview
+    run('compare',backup,'20000',hexfile,success=False)
+    assert backup.read_bytes()==bytes(12)
     run('to-hex', binary, hexfile, '1000', success=False)
     assert hexfile.read_text().startswith(':020000040001F9')
     run('to-hex', binary, base/'overflow.hex', 'ffffffff', success=False)

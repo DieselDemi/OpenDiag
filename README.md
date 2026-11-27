@@ -1,6 +1,6 @@
 # OpenDiag
 
-OpenDiag is a native Qt 6 reconstruction of the Ford PTDIAG diagnostics and programming suite. The current release is a **read-only PCM diagnostic and offline image tool**. ECU programming and full PTDIAG/MX32 parity are tracked in [the recovery matrix](reference/README.md).
+OpenDiag is a native Qt 6 reconstruction of the Ford PTDIAG diagnostics and programming suite. Version 0.2 provides **read-only vehicle diagnostics, data acquisition and offline programming-file tools**. ECU flashing and the other original workflows still outstanding are tracked in the [behavior ledger](reference/README.md).
 
 ## Try it without a vehicle
 
@@ -14,13 +14,27 @@ ctest --preset native
 
 On macOS, `open build/native/OpenDiag.app`. On Linux, run `build/native/OpenDiag`. On Windows, use a Visual Studio x64 developer shell with Qt on `CMAKE_PREFIX_PATH`; run `build\native\OpenDiag.exe`. If Qt is in a nonstandard location, pass `-DCMAKE_PREFIX_PATH=/path/to/Qt` to the configure step.
 
-Select **Simulator (no vehicle) → Connect → Ping module → Read**. Expect `GGDS (D100 = 0x01)`. Select **Read module software ID → Read** to get `SIM-PCM-001`. VIN, stored emissions DTCs, current engine RPM, and 1 Hz RPM sampling are also available. **Save session log** exports the displayed session, including driver/firmware versions and diagnostic request/response payloads. The display keeps the most recent 10,000 lines.
+Select **Simulator (no vehicle) → Connect → Ping module → Read**. Expect `GGDS (D100 = 0x01)`. Select **Read module software ID → Read** to get `SIM-PCM-001`. **File → Save session log** exports the most recent 10,000 log lines, including driver/firmware versions, request/response payloads, and acquisition boundaries.
 
 `opendiag-driver --replay OpenDiag.log` decodes an exported session again without loading a provider or transmitting. It rejects incomplete transactions and mismatched replies.
 
+### Try a complete PTDIAG acquisition
+
+1. **Setup → Import PTDIAG.INI**: choose [`reference/examples/PTDIAG.INI`](reference/examples/PTDIAG.INI). It loads the documented RPM/vbat configuration and a PID selection list using paths relative to the INI. The packaged examples are in `OpenDiag.app/Contents/Resources/examples`, the Windows installation's `examples`, or `/usr/share/opendiag/examples`.
+2. Connect the **Simulator** and open **Data acquisition**. On the RPM row set **High trigger** to `820` and **Post samples** to `2`. Click **Start monitor**. Expect four complete sets: RPM `800, 820, 840, 860`; vbat `14` for each. Inspect min/max and **View capture**.
+3. **Save capture** writes a numeric millisecond CSV. **Open capture** reads that data back. **File → Replay acquisition from session log** instead re-decodes the request/response bytes of a complete matching acquisition, with its original timestamps and FIFO capacity. Save the capture itself for long runs; the displayed log is bounded.
+
+Colon-record configurations support diagnostic DIDs (`p`), one-based packet fields (`k`), Mode 1 (`1`) and freeze frame 0 (`2`). Signed/unsigned, bit and four-byte float translations, binary point, scalar, offset, and arithmetic formulas using `x`, `+`, `-`, `*`, `/` and parentheses are supported. The monitor reads each distinct request once per sweep, records only complete sweeps, and supports stop-on-full or a rolling FIFO (default 200,000 sets) and per-channel high triggers. `k` is a field within a DID response, **not** module-programmed rapid packet mode. DMR (`d`) configurations can be decoded against a saved image in **Tools → Read DMRs from image**; live DMR, rapid mode, broadcast definitions and OSC are not qualified. The INI importer applies acquisition settings and reports unapplied keys. See the [actual files saved by all five originals](reference/golden/).
+
+### Diagnostics and CAN monitoring
+
+- **Diagnostic → Read DTCs from module list** loads the original three-column [module format](reference/examples/modules.cfg). The implemented scan reads ISO 14229 status records for `CAN` entries in the standard physical `7E0`–`7E7` range at 500 kbit/s; other protocols/routes are explicitly reported per module. The single-target reader also accepts a custom physical address pair.
+- Read stored, pending and permanent emissions codes, UDS status records, VIN, calibration IDs and CVNs. Mode 1/2/6/9 scans follow the ECU's supported-ID bitmaps. Mode 6 results are raw; a complete definition/units translator is still outstanding. **View → Ford trouble code definitions** reads the KWP2000 and ISO 14229 dictionaries from the hash-verified local 2293 executable as data; no original binary is executed or bundled by OpenDiag.
+- **Tools → Monitor CAN data** opens a separate raw classic CAN channel when diagnostics is disconnected. Filter 7xx, 6xx/7xx or a specific ID and save/reopen timestamped CAN CSV. The view shows the latest 1,000 matching frames; the capture retains the latest 100,000 unfiltered frames. It sends no application frames; this does not imply the adapter is electrically silent or disables bus ACKs.
+
 ## Connect a J2534 adapter
 
-Install the adapter's own provider. Select it in the provider list (Windows) or browse to its **absolute** library path. This version uses J2534-1 **04.04**, ISO 15765 at 500 kbit/s, physical 11-bit PCM request `7E0` / response `7E8`. The driver handles ISO-TP segmentation and flow control. The simulator uses the same dynamic loading, filters, and message calls as a real provider.
+Install the adapter's own provider. Select it in the provider list (Windows) or browse to its **absolute** library path. The default is J2534-1 **04.04**, physical ISO 15765 at 500 kbit/s, PCM request `7E0` / response `7E8`. Choose a module preset or **Setup → General configuration** for another physical 11/29-bit address pair and bitrate. Changing bitrate does not switch connector pins. The driver handles ISO-TP segmentation and flow control. The simulator uses the same dynamic loading, filters, and message calls as a real provider.
 
 | Target | Provider support |
 |---|---|
@@ -41,20 +55,22 @@ Copy-Item build32/Release/opendiag-driver-x86.exe build/native/
 
 ## Offline files
 
-**Inspect image** or `opendiag-image inspect FILE` reports format, byte count, ranges and addresses. For a raw `.bin`, displayed addresses are offsets from zero. The CLI also exports data as Intel HEX and inspects raw VID block offsets:
+**Utility → View HEX, VBF or binary file** shows sparse ranges, 256-byte hex/ASCII pages, the original VBF header for supported files, and HEX export. `opendiag-image inspect FILE` reports format, byte count, ranges and addresses. For a raw `.bin`, displayed addresses are offsets from zero. **Programming** supports offline lookup-table matching and comparing a candidate against a mapped backup. The comparison reports changed and retained bytes and the projected digest; it does not write either file or establish ECU compatibility.
 
 ```sh
 opendiag-image inspect calibration.vbf
 opendiag-image to-hex calibration.vbf new.hex
 opendiag-image to-hex block.bin new.hex 10000  # explicit hexadecimal base address
 opendiag-image vid vid-block.bin 2            # specify original layout 0, 1 or 2
+opendiag-image lookup generic lookup.txt 8C3A-14C204-AF
+opendiag-image compare backup.bin 10000 calibration.vbf
 ```
 
 The CLI is beside the driver helper (inside `OpenDiag.app/Contents/MacOS` on Mac). HEX export requires a new output file. Intel HEX checks record length, checksum, EOF, extended addresses and overlaps; type 03/05 entry records survive conversion. `.h32` is accepted only when it actually contains Intel HEX records. The VBF reader covers uncompressed 2.x files with big-endian address/length blocks and CRC-16/CCITT-FALSE per block. It does not validate a whole-file signature or copy VBF header metadata into HEX. Input limit: 64 MiB. The VID command reports raw bytes at the recovered offsets, not inferred engineering values.
 
 ## Build layout and packages
 
-- `native/diagnostics.cpp`: allowed read operations and reply decoding. `native/worker.cpp`: J2534 session in a separate process, bounded waits and cleanup. `native/window.cpp`: Qt client. Original Win32 sources are still available; `OPENDIAG_LEGACY_WIN32` is an optional historical target.
+- `native/diagnostics.cpp`: read operations and reply decoding. `native/worker.cpp`: J2534 session in a separate process, bounded waits and cleanup. `native/window.cpp`: Qt client; `native/acquisition.cpp` and `native/monitor.cpp`: file compatibility, sampling, triggers and replay. Original Win32 sources are still available; `OPENDIAG_LEGACY_WIN32` is an optional historical target.
 - `native/image.cpp`: shared desktop/CLI file parser. `native/vid_fields.inc`: the same 105 VID offsets used by the legacy and native builds.
 - [CI](.github/workflows/native.yml) builds and tests Windows x64 (plus x86 worker), macOS arm64, and Ubuntu 24.04 x86-64. Packages are a Windows NSIS installer, macOS DMG, and Ubuntu DEB. Vendor drivers are installed separately.
 - To package: configure with `-DOPENDIAG_DEPLOY_QT=ON` on Windows/macOS, build, then run `cpack --config build/native/CPackConfig.cmake -C Release`. On Windows set `OPENDIAG_X86_WORKER` to the absolute path to the separately built helper; NSIS and `windeployqt` must be on PATH. On Linux, install distro Qt, `dpkg-dev` and `file`. On macOS the development package is ad-hoc signed; a public release requires Developer ID signing and notarization.

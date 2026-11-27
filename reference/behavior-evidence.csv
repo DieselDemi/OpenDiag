@@ -1,0 +1,26 @@
+kind,parent,item,status,coverage,test
+menu,102,40031,partial,Single-rate DID and emissions capture through the shared J2534 session,desktop-session
+control,120,1009,partial,Start and stop single-rate monitor; rapid rate outstanding,desktop-session
+menu,121,40034,partial,Add a supported channel definition,acquisition-formats
+menu,121,40035,partial,Remove selected channel,acquisition-formats
+menu,121,40036,partial,Byte-preserving round trip of RPM and vbat files written by all five originals,acquisition-formats
+menu,121,40037,partial,Read original 1980–2293 output including formula and units; unsupported expressions reported,desktop-session;acquisition-formats
+menu,121,40044,partial,Edit and validate supported channel record,acquisition-formats
+menu,121,40123,partial,Export numeric millisecond capture table,desktop-session
+menu,121,40124,partial,Sample interval and bounded FIFO including stop-on-full,acquisition-formats
+menu,121,40125,partial,Open numeric capture in paged Qt model,desktop-session
+menu,121,40405,partial,Per-channel high threshold and post-trigger count,desktop-session
+menu,102,40002,partial,Physical 11/29-bit address and rate; no pin routing,simulator-session
+menu,102,40032,partial,Single-module read-only UDS status and emissions DTCs,simulator-session
+menu,140,40485,partial,Mode 0A read of permanent emissions DTCs,simulator-session
+menu,102,40079,partial,Stored pending permanent and Mode 9 identification; other modes incomplete,simulator-session
+menu,102,40415,partial,Paged sparse Intel HEX and Intel-record H32,image-files;acquisition-formats
+menu,102,40424,partial,Uncompressed VBF 2.x with header and byte pages,image-files
+menu,226,40420,partial,Uncompressed VBF 2.x to new Intel HEX,image-files
+menu,226,40425,partial,Original header displayed for supported VBF subset,image-files
+menu,102,40637,partial,Paged binary offsets hex and ASCII,acquisition-formats
+menu,129,40357,partial,Offline PCM table full-ID match and primary file,acquisition-formats
+menu,174,40357,partial,Offline generic table full-ID match and primary/SBL files,acquisition-formats
+menu,102,40089,partial,Read-only classic CAN monitor and capture; not electrical listen-only,simulator-session
+menu,156,40169,partial,Read multi-module CAN list with UDS mask; unsupported networks reported per entry,simulator-session
+menu,156,40551,partial,Select ISO 14229 status mask for multi-module read,simulator-session
