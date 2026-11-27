@@ -31,12 +31,8 @@ jobs:
       - run: cmake --build build --config Release
       - run: ctest --test-dir build -C Release --output-on-failure
       - if: runner.os == 'Windows'
-        name: Exercise the x64 GUI with a 32-bit provider on native Windows
-        shell: pwsh
-        run: |
-          Copy-Item build32/Release/opendiag-driver-x86.exe build/Release/
-          $env:OPENDIAG_TEST_PROVIDER = (Resolve-Path build32/Release/opendiag-sim.dll).Path
-          ctest --test-dir build -C Release -R '^desktop-session$' --output-on-failure
+        name: Verify hardware-only startup on native Windows
+        run: ctest --test-dir build -C Release -R '^hardware-ready-startup$' --output-on-failure
       - run: cpack --config build/CPackConfig.cmake -C Release
       - if: runner.os == 'Windows'
         name: Install and test the packaged driver
@@ -46,10 +42,12 @@ jobs:
           $dest = "$env:RUNNER_TEMP\OpenDiagInstalled"
           $p = Start-Process -FilePath $installer -ArgumentList '/S',"/D=$dest" -Wait -PassThru
           if ($p.ExitCode -ne 0 -or !(Test-Path "$dest/bin/opendiag-driver-x86.exe")) { throw 'Incomplete installation' }
-          python tests/session.py "$dest/bin/opendiag-driver.exe" "$dest/bin/opendiag-sim.dll"
-          if ($LASTEXITCODE -ne 0) { throw 'Installed driver tests failed' }
-          python tests/programming.py "$dest/bin/opendiag-image.exe" "$dest/examples/programming" "$dest/bin/opendiag-driver.exe" "$dest/bin/opendiag-sim.dll"
-          if ($LASTEXITCODE -ne 0) { throw 'Installed virtual ECU programming tests failed' }
+          python tests/worker-cli.py "$dest/bin/opendiag-driver.exe"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed J2534 worker validation failed' }
+          python tests/hardware-only.py "$dest/bin/OpenDiag.exe" "$dest/bin/opendiag-driver.exe" "$dest/bin/opendiag-image.exe"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed package is not hardware-only' }
+          python tests/hardware-only.py "$dest/bin/OpenDiag.exe" "$dest/bin/opendiag-driver.exe" "$dest/bin/opendiag-image.exe"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed package is not hardware-only' }
           python tests/mx32.py "$dest/bin/opendiag-image.exe" reference/golden/mx32
           if ($LASTEXITCODE -ne 0) { throw 'Installed MX32 configuration conversion tests failed' }
           Remove-Item Env:QT_PLUGIN_PATH -ErrorAction SilentlyContinue

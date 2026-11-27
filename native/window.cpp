@@ -3,7 +3,6 @@
 #include "can_monitor.h"
 #include "image.h"
 #include "monitor.h"
-#include "program_dialog.h"
 #include "viewer.h"
 #include <QApplication>
 #include <QCheckBox>
@@ -68,7 +67,6 @@ Window::Window() {
     bus->addWidget(label);
     bus->addWidget(providers, 1);
     providers->setObjectName("providerList");
-    providers->addItem("Simulator (no vehicle)", QApplication::applicationDirPath() + "/" OPENDIAG_SIM_FILE);
 #ifdef Q_OS_WIN
     for (auto format : {QSettings::Registry64Format, QSettings::Registry32Format}) {
         QSettings reg("HKEY_LOCAL_MACHINE\\SOFTWARE\\PassThruSupport.04.04", format);
@@ -81,6 +79,7 @@ Window::Window() {
         }
     }
 #endif
+    providers->setCurrentIndex(-1);
     browse = new QPushButton("Browse…");
     bus->addWidget(browse);
     profiles = new QComboBox;
@@ -91,6 +90,10 @@ Window::Window() {
     profiles->addItem("29-bit · 18DA10F1/18DAF110", QStringList{"18DA10F1", "18DAF110", "500000"});
     link = new QPushButton("&Connect");
     bus->addWidget(link);
+    connectionStatus = new QLabel("No J2534 device selected. Choose an installed pass-thru provider.");
+    connectionStatus->setObjectName("connectionStatus");
+    connectionStatus->setWordWrap(true);
+    layout->addWidget(connectionStatus);
     tabs = new QTabWidget;
     layout->addWidget(tabs, 3);
     auto *quick = new QWidget;
@@ -227,25 +230,13 @@ Window::Window() {
         });
         dlg.exec();
     });
-    auto *virtualTarget = setup->addAction("Select virtual ECU workspace…", this, [this] {
-        auto p = QFileDialog::getExistingDirectory(this, "Select a programmed virtual ECU");
-        if (!p.isEmpty())
-            selectVirtualTarget(p);
-    });
-    connect(setup, &QMenu::aboutToShow, this, [this, general, virtualTarget] {
-        general->setEnabled(state == Offline && !providers->currentData(Qt::UserRole + 1).isValid());
-        virtualTarget->setEnabled(state == Offline);
-    });
+    connect(setup, &QMenu::aboutToShow, this, [this, general] { general->setEnabled(state == Offline); });
     diagMenu->addAction("Data acquisition", this, [this] { tabs->setCurrentWidget(monitor); });
     diagMenu->addAction("Get DTCs", this, [this, quick] {
         tabs->setCurrentWidget(quick);
         op->setCurrentIndex(op->findData("ford-dtc"));
     });
     diagMenu->addAction("Read DTCs from module list…", this, [this] {
-        if (providers->currentData(Qt::UserRole + 1).isValid()) {
-            note("A file-backed virtual ECU exposes identification and supply voltage only");
-            return;
-        }
         if (state != Offline) {
             note("Disconnect before starting a multi-module scan");
             return;
@@ -276,10 +267,6 @@ Window::Window() {
         op->setCurrentIndex(op->findData("dtc"));
     });
     tools->addAction("Monitor CAN data…", this, [this] {
-        if (providers->currentData(Qt::UserRole + 1).isValid()) {
-            note("A file-backed virtual ECU has no broadcast CAN traffic");
-            return;
-        }
         if (state != Offline) {
             note("Disconnect the diagnostic session to use the raw CAN channel");
             return;
@@ -301,16 +288,7 @@ Window::Window() {
                 note(e.what());
             }
     });
-    program->addAction("Program or recover virtual ECU…", this, [this] {
-        QString selected;
-        {
-            ProgramDialog dialog(this);
-            dialog.exec();
-            selected = dialog.diagnosticTarget();
-        }
-        if (!selected.isEmpty())
-            selectVirtualTarget(selected);
-    });
+    program->setTitle("&Image preparation (offline)");
     program->addAction("Compare calibration with backup…", this, [this] {
         auto backup = QFileDialog::getOpenFileName(this, "Full raw backup", {}, "Binary (*.bin *.BIN)");
         if (backup.isEmpty())
@@ -351,7 +329,7 @@ Window::Window() {
         definitions.show(this);
     });
     for (bool generic : {false, true})
-        program->addAction(generic ? "Generic lookup table…" : "PCM lookup table…", this, [=] {
+        program->addAction(generic ? "Match generic image (offline)…" : "Match PCM image (offline)…", this, [=] {
             auto path = QFileDialog::getOpenFileName(this, "Open programming lookup table");
             if (path.isEmpty())
                 return;
@@ -468,13 +446,16 @@ Window::Window() {
             return;
         }
         auto path = providers->currentData().toString();
+        if (path.isEmpty() || !QFileInfo(path).isFile()) {
+            setState(Offline);
+            watchdog->stop();
+            connectionStatus->setText("Select an installed J2534 provider or browse to its driver library.");
+            return;
+        }
         setState(Opening);
-        note("Opening " + providers->currentText());
+        note("Opening J2534 provider " + providers->currentText());
         watchdog->start(10000);
-        auto directory = providers->currentData(Qt::UserRole + 1).toString();
-        worker->start(workerFor(path), directory.isEmpty()
-                                           ? QStringList{path} + profiles->currentData().toStringList()
-                                           : QStringList{path, "--virtual", directory});
+        worker->start(workerFor(path), QStringList{path} + profiles->currentData().toStringList());
     });
     connect(run, &QPushButton::clicked, this, [this] {
         note(op->currentText());
@@ -489,37 +470,26 @@ Window::Window() {
         note(marker);
     };
     monitor->stateChanged = [this] { setState(state); };
-    connect(providers, &QComboBox::currentIndexChanged, this, [this] {
-        if (providers->currentData(Qt::UserRole + 1).isValid())
-            profiles->setCurrentIndex(0);
-        setState(state);
-    });
+    connect(providers, &QComboBox::currentIndexChanged, this, [this] { setState(state); });
     setState(Offline);
-}
-void Window::selectVirtualTarget(const QString &directory) {
-    if (state != Offline) {
-        note("Disconnect the active session before selecting a virtual ECU");
-        return;
-    }
-    auto path = QFileInfo(directory).absoluteFilePath();
-    int row = providers->findData(path, Qt::UserRole + 1);
-    if (row < 0) {
-        providers->addItem("Virtual ECU: " + QFileInfo(path).fileName(), providers->itemData(0));
-        row = providers->count() - 1;
-        providers->setItemData(row, path, Qt::UserRole + 1);
-    }
-    providers->setCurrentIndex(row);
-    op->setCurrentIndex(op->findData("module"));
-    tabs->setCurrentIndex(0);
 }
 void Window::setState(State next) {
     state = next;
     bool ready = state == Ready, online = ready || state == QuickRead || state == Acquisition;
     providers->setEnabled(state == Offline);
     browse->setEnabled(state == Offline);
-    profiles->setEnabled(state == Offline && !providers->currentData(Qt::UserRole + 1).isValid());
+    profiles->setEnabled(state == Offline);
     link->setText(state == Offline ? "&Connect" : state == Scanning ? "Stop scan" : "&Disconnect");
-    link->setEnabled(state == Offline || state == Scanning || online);
+    const bool physicalProvider = providers->currentIndex() >= 0 &&
+                                  QFileInfo(providers->currentData().toString()).isFile();
+    link->setEnabled((state == Offline && physicalProvider) || state == Scanning || online);
+    if (state == Offline) {
+        if (!physicalProvider)
+            connectionStatus->setText("No J2534 device selected. Choose an installed pass-thru provider.");
+        else
+            connectionStatus->setText("Selected J2534 provider: " + providers->currentText() + " — " +
+                                      QFileInfo(providers->currentData().toString()).absoluteFilePath());
+    }
     run->setEnabled(ready && !monitor->running());
     op->setEnabled(state != QuickRead && !sample->isChecked() && !monitor->running());
     sample->setEnabled((ready || sample->isChecked()) && !monitor->running());
@@ -571,6 +541,7 @@ void Window::readLines() {
             }
         }
         if (old == Opening && !ok) {
+            connectionStatus->setText("J2534 could not open the provider or vehicle channel. Review the provider error; confirm vehicle power, ignition, wiring and adapter pin routing.");
             setState(Closing);
             watchdog->start(2000);
             continue;

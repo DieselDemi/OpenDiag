@@ -11,12 +11,12 @@ class QPlainTextEdit;
 class QProcess;
 class QTimer;
 class Monitor;
+class QLabel;
 
 class Window : public QWidget {
   public:
     Window();
     ~Window() override;
-    void selectVirtualTarget(const QString &directory);
 
   protected:
     void closeEvent(QCloseEvent *event) override;
@@ -31,6 +31,7 @@ class Window : public QWidget {
     QPlainTextEdit *log;
     QTabWidget *tabs;
     Monitor *monitor;
+    QLabel *connectionStatus;
     DtcDefinitions definitions;
     void setState(State next);
     void send(const QString &command, State owner);

@@ -111,15 +111,9 @@ struct Session {
         detail[sizeof(detail) - 1] = 0;
         throw std::runtime_error(std::string(step) + " failed (" + std::to_string(status) + "): " + detail);
     }
-    std::string start(bool raw = false, const std::filesystem::path &workspace = {}) {
+    std::string start(bool raw = false) {
         U32 id{};
-        if (workspace.empty())
-            check(open(nullptr, &id), "Open");
-        else {
-            using OpenWorkspace = Status(PT_CALL *)(const char *, U32 *);
-            check(lib.get<OpenWorkspace>("OpenDiagOpenWorkspace", 8)(workspace.u8string().c_str(), &id),
-                  "Open virtual ECU");
-        }
+        check(open(nullptr, &id), "Open J2534 device");
         device = id;
         char fw[256]{}, dll[256]{}, api[256]{};
         check(version(*device, fw, dll, api), "Read driver version");
@@ -399,10 +393,9 @@ int main(int argc, char **argv) {
             replay(argv[2]);
             return 0;
         }
-        bool virtualDevice = argc == 4 && std::filesystem::path(argv[2]) == "--virtual";
-        if (argc != 2 && argc != 5 && !virtualDevice)
+        if (argc != 2 && argc != 5)
             throw std::runtime_error("Usage: opendiag-driver PROVIDER [TX_HEX RX_HEX BAUD | --can 11|29 BAUD] "
-                                     "| --replay CAPTURE.log | SIM_PROVIDER --virtual WORKSPACE");
+                                     "| --replay CAPTURE.log");
         diag::Link link;
         bool raw = argc == 5 && std::filesystem::path(argv[2]) == "--can";
         if (raw) {
@@ -416,8 +409,7 @@ int main(int argc, char **argv) {
                                      std::filesystem::path(argv[3]).string(),
                                      std::filesystem::path(argv[4]).string());
         Session session{std::filesystem::path(argv[1]), link};
-        report("PROVIDER", session.start(raw, virtualDevice ? std::filesystem::absolute(argv[3])
-                                                            : std::filesystem::path{}));
+        report("PROVIDER", session.start(raw));
         if (raw) {
             report("OK", "Raw CAN monitor connected");
             std::string cmd;

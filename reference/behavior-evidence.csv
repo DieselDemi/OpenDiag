@@ -1,36 +1,35 @@
 kind,parent,item,status,coverage,test
-menu,102,40031,partial,Single-rate DID and emissions capture through the shared J2534 session,desktop-session
-control,120,1009,partial,Start and stop single-rate monitor; rapid rate outstanding,desktop-session
+menu,102,40031,partial,Single-rate DID capture through a selected physical J2534 provider,hardware-ready-startup;acquisition-formats
+control,120,1009,partial,Start/stop a single-rate monitor after physical J2534 connect,acquisition-formats
 menu,121,40034,partial,Add a supported channel definition,acquisition-formats
 menu,121,40035,partial,Remove selected channel,acquisition-formats
 menu,121,40036,partial,Byte-preserving round trip of RPM and vbat files written by all five originals,acquisition-formats
-menu,121,40037,partial,Read original 1980–2293 output including formula and units; unsupported expressions reported,desktop-session;acquisition-formats
+menu,121,40037,partial,Read original 1980–2293 output including formula and units,acquisition-formats
 menu,121,40044,partial,Edit and validate supported channel record,acquisition-formats
-menu,121,40123,partial,Export numeric millisecond capture table,desktop-session
+menu,121,40123,partial,Export numeric millisecond capture table,acquisition-formats
 menu,121,40124,partial,Sample interval and bounded FIFO including stop-on-full,acquisition-formats
-menu,121,40125,partial,Open numeric capture in paged Qt model,desktop-session
-menu,121,40405,partial,Per-channel high threshold and post-trigger count,desktop-session
-menu,102,40002,partial,Physical 11/29-bit address and rate; no pin routing,simulator-session
-menu,102,40032,partial,Single-module read-only UDS status and emissions DTCs,simulator-session
-menu,140,40485,partial,Mode 0A read of permanent emissions DTCs,simulator-session
-menu,102,40079,partial,Stored pending permanent and Mode 9 identification; other modes incomplete,simulator-session
-menu,102,40415,partial,Paged sparse Intel HEX and Intel-record H32,image-files;acquisition-formats
+menu,121,40125,partial,Open numeric capture in paged Qt model,acquisition-formats
+menu,121,40405,partial,Per-channel high threshold and post-trigger count,acquisition-formats
+menu,102,40002,partial,Explicit 11/29-bit ISO15765 physical address and rate configuration,diagnostic-decoding
+menu,102,40032,partial,Single-module read-only UDS status and emissions DTCs,diagnostic-decoding
+menu,140,40485,partial,Mode 0A read of permanent emissions DTCs,diagnostic-decoding
+menu,102,40079,partial,Stored pending permanent and Mode 9 identification; other modes incomplete,diagnostic-decoding
+menu,102,40415,partial,Paged sparse Intel HEX and Intel-record H32,image-files
 menu,102,40424,partial,Uncompressed VBF 2.x with header and byte pages,image-files
 menu,226,40420,partial,Uncompressed VBF 2.x to new Intel HEX,image-files
-menu,226,40425,partial,Original header displayed for supported VBF subset,image-files
+menu,226,40425,partial,Recognized Ford/KAM text headers and VBF metadata,image-files
 menu,102,40637,partial,Paged binary offsets hex and ASCII,acquisition-formats
 menu,129,40357,partial,Offline PCM table full-ID match and primary file,acquisition-formats
 menu,174,40357,partial,Offline generic table full-ID match and primary/SBL files,acquisition-formats
-menu,102,40089,partial,Read-only classic CAN monitor and capture; not electrical listen-only,simulator-session
-menu,156,40169,partial,Read multi-module CAN list with UDS mask; unsupported networks reported per entry,simulator-session
-menu,156,40551,partial,Select ISO 14229 status mask for multi-module read,simulator-session
-menu,102,40022,virtual-only,PCM job with lookup selection erase transfer verification reset and interruption recovery on file-backed target,virtual-programming-recovery;desktop-session
-menu,102,40173,virtual-only,Generic job with mapped secondary RAM image and checked retention; no physical bootloader execution,virtual-programming-recovery
-menu,102,40332,virtual-only,Read address range or program explicit block in a virtual bank with sector preservation,virtual-programming-recovery
-menu,102,40365,partial,Original region config import and KAM HEX backup/restore on the virtual bank,virtual-programming-recovery
-menu,102,40408,partial,Translate numeric rows and columns from a saved image with signed unsigned or float cells and selectable byte order,image-files
-control,110,1010,virtual-only,Automatic PCM job on file-backed target,virtual-programming-recovery;desktop-session
-control,110,1020,virtual-only,Checkpointed virtual sector erase,virtual-programming-recovery
-control,110,1021,virtual-only,Program changed sectors and read back the bytes,virtual-programming-recovery
-control,110,1095,virtual-only,Preserve explicitly mapped VID field through erase and program,virtual-programming-recovery
-control,110,1164,virtual-only,Preserve explicitly mapped TRID field through erase and program,virtual-programming-recovery
+menu,102,40089,partial,Raw classic CAN capture through a physical J2534 adapter,diagnostic-decoding
+menu,156,40169,partial,Read DTCs from supported ISO 15765 module-list entries,diagnostic-decoding
+menu,156,40551,partial,Select ISO 14229 DTC status mask,diagnostic-decoding
+menu,102,40022,unverified,Live PCM programming requires recovery of the original target-specific transaction,Needs exact module/image/service profile
+menu,102,40173,unverified,Live generic-module programming requires loader and target-specific transaction recovery,Needs exact module/loader/security profile
+menu,102,40332,unverified,Live vehicle block writes are not available,Needs command semantics and recoverable module
+menu,102,40365,unverified,Live KAM/VID/TRID backup and restore is not available,Needs target addressing and post-write verification
+control,110,1010,unverified,Automatic live PCM programming is not implemented,Requires validated target-specific state machine
+control,110,1020,unverified,Live ECU erase is not implemented,Requires target-specific erase and recovery procedure
+control,110,1021,unverified,Live ECU download is not implemented,Requires target-specific transfer and verification
+control,110,1095,unverified,Live VID retention is not implemented,Requires valid target-specific VID location and size
+control,110,1164,unverified,Live TRID retention is not implemented,Requires valid target-specific TRID location and size
