@@ -25,12 +25,13 @@ int main(int argc,char **argv){
         auto text=providers->itemText(i).toLower();
         if(text.contains("simulator") || text.contains("virtual") || text.contains("mock"))return 2;
     }
+    bool programming=false;
     for(auto *menu:window.findChildren<QMenu *>()){
-        if(menu->title().contains("flash",Qt::CaseInsensitive) || menu->title().contains("program",Qt::CaseInsensitive))return 3;
+        if(menu->title().contains("program",Qt::CaseInsensitive))programming=true;
         for(auto *action:menu->actions())
-            if(action->text().contains("virtual",Qt::CaseInsensitive) || action->text().contains("simulator",Qt::CaseInsensitive) ||
-               action->text().contains("erase",Qt::CaseInsensitive) || action->text().contains("program module",Qt::CaseInsensitive))return 4;
+            if(action->text().contains("virtual",Qt::CaseInsensitive) || action->text().contains("simulator",Qt::CaseInsensitive))return 4;
     }
+    if(!programming)return 3;
     auto *monitor=static_cast<Monitor *>(window.findChild<QWidget *>("acquisition"));
     auto *table=window.findChild<QTableWidget *>();
     if(!monitor || !table)return 5;
