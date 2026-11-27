@@ -1,0 +1,103 @@
+name: Native build, test and package
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  native:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2022, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y ninja-build qt6-base-dev qt6-qpa-plugins dpkg-dev file
+      - if: runner.os != 'Linux'
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.8.3'
+          cache: true
+      - if: runner.os == 'macOS'
+        run: test "$(uname -m)" = arm64
+      - if: runner.os == 'Windows'
+        shell: cmd
+        run: |
+          cmake -S . -B build32 -A Win32 -DOPENDIAG_WORKER_ONLY=ON && cmake --build build32 --config Release && ctest --test-dir build32 -C Release --output-on-failure
+      - if: runner.os == 'Windows'
+        run: cmake -S . -B build -A x64 -DOPENDIAG_DEPLOY_QT=ON "-DOPENDIAG_X86_WORKER=$pwd/build32/Release/opendiag-driver-x86.exe"
+      - if: runner.os != 'Windows'
+        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DOPENDIAG_DEPLOY_QT=${{ runner.os == 'macOS' && 'ON' || 'OFF' }}
+      - run: cmake --build build --config Release
+      - run: ctest --test-dir build -C Release --output-on-failure
+      - if: runner.os == 'Windows'
+        name: Verify hardware-only startup on native Windows
+        run: ctest --test-dir build -C Release -R '^hardware-ready-startup$' --output-on-failure
+      - run: cpack --config build/CPackConfig.cmake -C Release
+      - if: runner.os == 'Windows'
+        name: Install and test the packaged driver
+        shell: pwsh
+        run: |
+          $installer = (Get-ChildItem build/packages/*.exe).FullName
+          $dest = "$env:RUNNER_TEMP\OpenDiagInstalled"
+          $p = Start-Process -FilePath $installer -ArgumentList '/S',"/D=$dest" -Wait -PassThru
+          if ($p.ExitCode -ne 0 -or !(Test-Path "$dest/bin/opendiag-driver-x86.exe")) { throw 'Incomplete installation' }
+          python tests/worker-cli.py "$dest/bin/opendiag-driver.exe"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed J2534 worker validation failed' }
+          python tests/hardware-only.py "$dest/bin/OpenDiag.exe" "$dest/bin/opendiag-driver.exe" "$dest/bin/opendiag-image.exe"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed package is not hardware-only' }
+          python tests/hardware-only.py "$dest/bin/OpenDiag.exe" "$dest/bin/opendiag-driver.exe" "$dest/bin/opendiag-image.exe"
+          if ($LASTEXITCODE -ne 0) { throw 'Installed package is not hardware-only' }
+          if (Test-Path reference/golden/mx32) {
+            python tests/mx32.py "$dest/bin/opendiag-image.exe" reference/golden/mx32
+            if ($LASTEXITCODE -ne 0) { throw 'Installed MX32 configuration conversion tests failed' }
+          }
+          Remove-Item Env:QT_PLUGIN_PATH -ErrorAction SilentlyContinue
+          $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+          $gui = Start-Process -FilePath "$dest/bin/OpenDiag.exe" -PassThru
+          try {
+            for ($i = 0; $i -lt 100; $i++) {
+              $gui.Refresh()
+              if ($gui.HasExited) { throw "Installed GUI exited: $($gui.ExitCode)" }
+              if ($gui.MainWindowTitle -like 'OpenDiag*') { break }
+              Start-Sleep -Milliseconds 100
+            }
+            if ($gui.MainWindowTitle -notlike 'OpenDiag*') { throw 'Installed GUI window did not appear' }
+            if (!$gui.CloseMainWindow() -or !$gui.WaitForExit(5000) -or $gui.ExitCode -ne 0) { throw 'Installed GUI failed to close' }
+          } finally { if (!$gui.HasExited) { $gui.Kill() } }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenDiag-${{ matrix.os }}
+          path: |
+            build/packages/*.dmg
+            build/packages/*.exe
+            build/packages/*.deb
+          if-no-files-found: error
+
+  release:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: native
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: true
+      - name: Publish latest main release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=main-latest
+          title="OpenDiag main latest"
+          git tag -f "$tag" "$GITHUB_SHA"
+          git push -f origin "refs/tags/$tag"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" release-artifacts/* --clobber
+            gh release edit "$tag" --target "$GITHUB_SHA" --title "$title" --prerelease --latest=false --notes "Automated build from ${GITHUB_SHA}."
+          else
+            gh release create "$tag" release-artifacts/* --target "$GITHUB_SHA" --title "$title" --prerelease --latest=false --notes "Automated build from ${GITHUB_SHA}."
+          fi

@@ -1,0 +1,6 @@
+{
+  "version": 3,
+  "configurePresets": [{"name": "native", "generator": "Ninja", "binaryDir": "${sourceDir}/build/native", "cacheVariables": {"CMAKE_BUILD_TYPE": "Release"}}],
+  "buildPresets": [{"name": "native", "configurePreset": "native"}],
+  "testPresets": [{"name": "native", "configurePreset": "native", "output": {"outputOnFailure": true}}]
+}
