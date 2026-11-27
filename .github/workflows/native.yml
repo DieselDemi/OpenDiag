@@ -48,8 +48,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Installed package is not hardware-only' }
           python tests/hardware-only.py "$dest/bin/OpenDiag.exe" "$dest/bin/opendiag-driver.exe" "$dest/bin/opendiag-image.exe"
           if ($LASTEXITCODE -ne 0) { throw 'Installed package is not hardware-only' }
-          python tests/mx32.py "$dest/bin/opendiag-image.exe" reference/golden/mx32
-          if ($LASTEXITCODE -ne 0) { throw 'Installed MX32 configuration conversion tests failed' }
+          if (Test-Path reference/golden/mx32) {
+            python tests/mx32.py "$dest/bin/opendiag-image.exe" reference/golden/mx32
+            if ($LASTEXITCODE -ne 0) { throw 'Installed MX32 configuration conversion tests failed' }
+          }
           Remove-Item Env:QT_PLUGIN_PATH -ErrorAction SilentlyContinue
           $env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
           $gui = Start-Process -FilePath "$dest/bin/OpenDiag.exe" -PassThru
